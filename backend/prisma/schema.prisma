@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Single row (id = 1) holding the tournament title.
+model Event {
+  id        Int      @id @default(1)
+  name      String   @default("Taifa District of SDA")
+  subtitle  String   @default("")
+  updatedAt DateTime @updatedAt
+}
+
+model Organizer {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  name        String?
+  createdAt   DateTime  @default(now())
+  lastLoginAt DateTime?
+}
+
+model OtpCode {
+  id         String    @id @default(cuid())
+  email      String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email, createdAt])
+}
+
+model Church {
+  id          String      @id @default(cuid())
+  name        String
+  color       String
+  /// The church rep signs in with a code sent to this address.
+  email       String?     @unique
+  lastLoginAt DateTime?
+  order       Int         @default(0)
+  createdAt   DateTime    @default(now())
+  players     Player[]
+  fixturesA   Fixture[]   @relation("ChurchA")
+  fixturesB   Fixture[]   @relation("ChurchB")
+  teamSheets  TeamSheet[]
+}
+
+/// Decides team-sheet size: see FORMATS in src/lib/formats.ts.
+enum GameFormat {
+  football
+  volleyball
+  penalties
+}
+
+enum Division {
+  men
+  women
+  open
+}
+
+model Game {
+  id          String     @id @default(cuid())
+  name        String
+  description String     @default("")
+  format      GameFormat @default(football)
+  division    Division   @default(open)
+  /// Only players marked as elders can be picked.
+  eldersOnly  Boolean    @default(false)
+  pointsWin   Int        @default(3)
+  pointsDraw  Int        @default(1)
+  pointsLoss  Int        @default(0)
+  order       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  fixtures    Fixture[]
+}
+
+enum FixtureStatus {
+  scheduled
+  final
+}
+
+enum Outcome {
+  A
+  B
+  draw
+}
+
+model Fixture {
+  id         String        @id @default(cuid())
+  /// Kept (as null) when its game is removed, like the original app.
+  gameId     String?
+  game       Game?         @relation(fields: [gameId], references: [id], onDelete: SetNull)
+  churchAId  String
+  churchA    Church        @relation("ChurchA", fields: [churchAId], references: [id], onDelete: Cascade)
+  churchBId  String
+  churchB    Church        @relation("ChurchB", fields: [churchBId], references: [id], onDelete: Cascade)
+  round      String        @default("Round 1")
+  time       String        @default("")
+  location   String        @default("")
+  scoreNote  String        @default("")
+  /// Goals for football and penalties, sets won for volleyball.
+  scoreA     Int?
+  scoreB     Int?
+  status     FixtureStatus @default(scheduled)
+  outcome    Outcome?
+  createdAt  DateTime      @default(now())
+  teamSheets TeamSheet[]
+}
+
+enum Gender {
+  male
+  female
+}
+
+model Player {
+  id            String            @id @default(cuid())
+  churchId      String
+  church        Church            @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  name          String
+  number        String            @default("")
+  gender        Gender
+  isElder       Boolean           @default(false)
+  /// Stored on Cloudinary; the public id is kept so a replaced photo can be deleted.
+  photoUrl      String?
+  photoPublicId String?
+  createdAt     DateTime          @default(now())
+  selections    TeamSheetPlayer[]
+}
+
+/// A church's line-up for one fixture.
+model TeamSheet {
+  id        String            @id @default(cuid())
+  fixtureId String
+  fixture   Fixture           @relation(fields: [fixtureId], references: [id], onDelete: Cascade)
+  churchId  String
+  church    Church            @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  updatedAt DateTime          @updatedAt
+  players   TeamSheetPlayer[]
+
+  @@unique([fixtureId, churchId])
+}
+
+enum SheetRole {
+  starter
+  sub
+}
+
+model TeamSheetPlayer {
+  sheetId  String
+  sheet    TeamSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  playerId String
+  player   Player    @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  role     SheetRole
+  order    Int       @default(0)
+
+  @@id([sheetId, playerId])
+}
