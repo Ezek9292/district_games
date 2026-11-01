@@ -80,7 +80,15 @@ expire after 10 minutes, allow 5 attempts, and can be re-requested once a minute
 
 ## Deploying
 
-- **Backend**: any Node host that keeps a long-running process (Render, Railway, Fly.io) — the live
-  updates use a persistent SSE connection, so serverless functions aren't a good fit. Set `NODE_ENV=production`,
-  `FRONTEND_ORIGIN=https://your-frontend.app`, and run `npm run build && npm run db:deploy && npm start`.
-- **Frontend**: Vercel or similar, with `NEXT_PUBLIC_API_URL` pointing to the backend.
+- **Backend**: any Node 20+ host that keeps a long-running process (Render, Railway, Fly.io) — the live
+  updates use a persistent SSE connection, so serverless functions aren't a good fit.
+  - Root directory: `backend`
+  - Build: `npm install --include=dev && npm run build && npm run db:deploy`
+    (`--include=dev` matters: with `NODE_ENV=production` npm otherwise skips TypeScript and Prisma)
+  - Start: `npm start` · Health check: `/health`
+  - Env: everything in `backend/.env.example`, plus `NODE_ENV=production` and
+    `FRONTEND_ORIGIN=https://your-frontend.app`. `SMTP_HOST` is required in production.
+  - First deploy only: run `npm run db:seed` once (locally against the production `DATABASE_URL` works) to
+    create the event row, the organizers from `ORGANIZER_EMAILS`, and the games.
+- **Frontend**: Vercel or similar, root directory `frontend`, with `NEXT_PUBLIC_API_URL` set to the backend URL
+  (it's baked in at build time, so redeploy after changing it).
