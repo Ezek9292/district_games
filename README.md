@@ -80,6 +80,7 @@ expire after 10 minutes, allow 5 attempts, and can be re-requested once a minute
 
 ## Deploying
 
+- **Own server (PM2 + Nginx, auto-deployed by GitHub Actions)**: see [DEPLOY.md](DEPLOY.md).
 - **Backend**: any Node 20+ host that keeps a long-running process (Render, Railway, Fly.io) — the live
   updates use a persistent SSE connection, so serverless functions aren't a good fit.
   - Root directory: `backend`

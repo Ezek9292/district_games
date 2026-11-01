@@ -6,9 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+# Superseded PR runs are cancelled; runs on main finish so a deploy is never cut off halfway.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   backend:
@@ -48,3 +49,36 @@ jobs:
       - run: npm run build
         env:
           NEXT_PUBLIC_API_URL: https://example.invalid
+
+  # Pushes to main that pass both builds are deployed to the server over SSH (see DEPLOY.md).
+  deploy:
+    name: Deploy to server
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+      APP_DIR: ${{ secrets.APP_DIR }}
+    steps:
+      - name: Set up SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          for v in SSH_HOST SSH_USER SSH_PRIVATE_KEY APP_DIR; do
+            [ -n "${!v}" ] || { echo "::error::Repository secret $v is not set (see DEPLOY.md)"; exit 1; }
+          done
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Pull, build and restart
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+            "set -e; cd '$APP_DIR'; git fetch origin main; git checkout -q main; git merge --ff-only origin/main; bash deploy.sh"
