@@ -21,5 +21,5 @@ app.use("/api", adminRouter);
 app.use(errorHandler);
 
 app.listen(env.PORT, () => {
-  console.log(`API listening on http://localhost:${env.PORT}`);
+  console.log(`API listening on http://localhost:${env.PORT}` ✅);
 });
