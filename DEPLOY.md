@@ -117,3 +117,45 @@ the server to see the error.
 
 If the server's working copy has local edits, the deploy stops at `git merge --ff-only` instead of
 overwriting them. Run `git status` there and discard or commit them.
+
+## 7. Nightly database backups
+
+[`backup.yml`](.github/workflows/backup.yml) dumps the app's tables every night at 02:17 UTC, encrypts the
+file and keeps it under **Actions → Database backup → (run) → Artifacts** for 30 days. Add two more secrets:
+
+| Secret | Value |
+|---|---|
+| `BACKUP_DATABASE_URL` | the same value as `DIRECT_URL` in `backend/.env` (session pooler, port 5432) |
+| `BACKUP_PASSPHRASE` | a long random password, e.g. `openssl rand -base64 32`. **Store it in your password manager too**: without it the backups can't be opened |
+
+Then run it once by hand (**Actions → Database backup → Run workflow**) and check that it goes green.
+
+To restore (this replaces the current data):
+
+```bash
+gpg --decrypt church-games-YYYY-MM-DD.dump.gpg > backup.dump      # asks for BACKUP_PASSPHRASE
+pg_restore --clean --if-exists --no-owner --no-privileges -d "$DIRECT_URL" backup.dump
+```
+
+GitHub pauses scheduled workflows in a repo with no commits for 60 days; if that happens, it emails you and
+**Actions → Database backup → Enable workflow** turns it back on.
+
+## 8. Uptime alerts
+
+[`uptime.yml`](.github/workflows/uptime.yml) checks the site and `/health` (which also checks the database)
+every 10 minutes; a failing run makes GitHub email you. Scheduled runs can be a few minutes late, so for
+faster alerts also add a free monitor at [uptimerobot.com](https://uptimerobot.com):
+**New monitor → HTTP(s) → `https://districtgames-api.edonkor.dev/health`**, interval 5 minutes, with an email
+or Telegram alert. Add a second one for `https://districtgames.edonkor.dev`.
+
+## 9. Cloudflare settings
+
+- **SSL/TLS → Overview → Full (strict)**, so traffic is encrypted between Cloudflare and the server too. This
+  needs a valid certificate on the server: either the Let's Encrypt one from step 4, or a free
+  **SSL/TLS → Origin Server → Create certificate** installed in Nginx. If the site shows error 526 after
+  switching, the server's certificate is missing or expired.
+- **SSL/TLS → Edge Certificates → Always Use HTTPS: on**.
+- Keep both DNS records **proxied** (orange cloud). The API's sign-in rate limit trusts Cloudflare's
+  `CF-Connecting-IP` header to tell visitors apart. To stop anyone bypassing Cloudflare and faking that header,
+  only let Cloudflare reach ports 80/443 (allow the ranges at <https://www.cloudflare.com/ips/> in `ufw` or your
+  provider's firewall).

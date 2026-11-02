@@ -5,6 +5,7 @@ import { HttpError } from "../lib/http";
 import { broadcastOnSuccess } from "../lib/live";
 import { deletePhoto, photoUpload } from "../lib/photos";
 import { createPlayer, deletePlayer, setPlayerPhoto, sheetInclude, updatePlayer } from "../lib/roster";
+import { resultOutcome } from "../lib/rules";
 import { requireOrganizer } from "../middleware/auth";
 
 /** Every route here requires a signed-in organizer. */
@@ -139,10 +140,7 @@ adminRouter.put("/fixtures/:id/result", async (req, res) => {
     }));
     return;
   }
-  if (body.scoreA === body.scoreB && fixture.game && fixture.game.format !== "football") {
-    throw new HttpError(400, `${fixture.game.name} can't end in a draw. Enter the deciding score.`);
-  }
-  const outcome = body.scoreA > body.scoreB ? "A" : body.scoreB > body.scoreA ? "B" : "draw";
+  const outcome = resultOutcome(fixture.game, body.scoreA, body.scoreB);
   res.json(await prisma.fixture.update({
     where: { id: fixture.id },
     data: { scoreA: body.scoreA, scoreB: body.scoreB, outcome, status: "final", scoreNote: body.scoreNote },

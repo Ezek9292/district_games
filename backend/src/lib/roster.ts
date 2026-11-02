@@ -1,9 +1,9 @@
 import { z } from "zod";
-import type { Game, Player, Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../prisma";
-import { FORMATS } from "./formats";
 import { HttpError } from "./http";
 import { deletePhoto, uploadPhoto } from "./photos";
+import { checkTeamSheet } from "./rules";
 
 export const playerSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(60),
@@ -48,14 +48,6 @@ export async function setPlayerPhoto(id: string, file: Express.Multer.File | und
   return updated;
 }
 
-/** Why a player can't play this game, or null if they can. */
-export function ineligibleReason(game: Game, player: Player): string | null {
-  if (game.division === "men" && player.gender !== "male") return `${player.name} can't play in a men's game`;
-  if (game.division === "women" && player.gender !== "female") return `${player.name} can't play in a women's game`;
-  if (game.eldersOnly && !player.isElder) return `${player.name} isn't registered as an elder`;
-  return null;
-}
-
 const sheetSchema = z.object({
   starters: z.array(z.string()).default([]),
   subs: z.array(z.string()).default([]),
@@ -77,19 +69,7 @@ export async function saveTeamSheet(fixtureId: string, churchId: string, body: u
   const game = fixture.game;
   if (!game) throw new HttpError(400, "This fixture has no game yet.");
 
-  const rules = FORMATS[game.format];
-  if (starters.length !== rules.starters) {
-    throw new HttpError(400, `${game.name} needs exactly ${rules.starters} starting players (you picked ${starters.length}).`);
-  }
-  if (subs.length > rules.maxSubs) {
-    throw new HttpError(400, `${game.name} allows at most ${rules.maxSubs} substitutes (you picked ${subs.length}).`);
-  }
-  if (new Set(ids).size !== ids.length) throw new HttpError(400, "A player can only be picked once.");
-  if (players.length !== ids.length) throw new HttpError(400, "Only your own registered players can be picked.");
-  for (const p of players) {
-    const reason = ineligibleReason(game, p);
-    if (reason) throw new HttpError(400, reason + ".");
-  }
+  checkTeamSheet(game, starters, subs, players);
 
   const rows = [
     ...starters.map((playerId, order) => ({ playerId, role: "starter" as const, order })),

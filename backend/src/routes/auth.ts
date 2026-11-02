@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { prisma } from "../prisma";
@@ -9,7 +9,16 @@ import { readToken, signToken, type Role } from "../middleware/auth";
 
 export const authRouter = Router();
 
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: "draft-7", legacyHeaders: false });
+// Behind Cloudflare, req.ip is a Cloudflare edge shared by many visitors; the visitor's own IP is in CF-Connecting-IP.
+const clientIp = (req: Request) => (req.get("cf-connecting-ip") ?? req.ip ?? "unknown").trim();
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: clientIp,
+});
 
 const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address");
 const roleSchema = z.enum(["organizer", "church"]).default("organizer");
