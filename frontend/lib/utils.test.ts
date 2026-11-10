@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { Church, Fixture, Game } from "./types.ts";
-import { computeRecords } from "./utils.ts";
+import { computeRecords, photoSrc } from "./utils.ts";
 
 const churches: Church[] = ["a", "b", "c"].map((id, order) => ({ id, name: id.toUpperCase(), color: "#000", order }));
 
@@ -51,4 +51,10 @@ test("fixtures without a game fall back to 3/1/0", () => {
 test("ignores fixtures involving a removed church", () => {
   const rec = computeRecords(churches, [game("football")], [played("football", "a", "gone", 5, 0)], null);
   assert.deepEqual(rec.a, { w: 0, d: 0, l: 0, pts: 0, gf: 0, ga: 0 });
+});
+
+test("photoSrc asks Cloudinary for a small copy and leaves other URLs alone", () => {
+  const url = "https://res.cloudinary.com/demo/image/upload/v1712/players/abc.jpg";
+  assert.equal(photoSrc(url, 128), "https://res.cloudinary.com/demo/image/upload/c_fill,g_face,w_128,h_128,q_auto,f_auto/v1712/players/abc.jpg");
+  assert.equal(photoSrc("https://example.com/a.jpg", 128), "https://example.com/a.jpg");
 });

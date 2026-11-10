@@ -51,3 +51,14 @@ export function photoProblem(file: File): string | null {
   if (file.size > PHOTO_MAX_BYTES) return "That photo is too large (max 5 MB).";
   return null;
 }
+
+/**
+ * A Cloudinary photo resized to `px` square for small thumbnails; the stored URL is the full-size one.
+ * Other URLs are returned unchanged.
+ */
+export function photoSrc(url: string, px: number): string {
+  const marker = "/image/upload/";
+  if (!url.startsWith("https://res.cloudinary.com/") || !url.includes(marker)) return url;
+  const size = Math.round(px);
+  return url.replace(marker, `${marker}c_fill,g_face,w_${size},h_${size},q_auto,f_auto/`);
+}

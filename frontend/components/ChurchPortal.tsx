@@ -47,7 +47,7 @@ export default function ChurchPortal() {
             <h3 className="card-title">Church sign-in</h3>
             <SignInForm
               as="church"
-              intro="Enter your church's registered rep email and we'll send you a 6-digit code. Don't have one? Ask an organizer to add your email to your church."
+              intro="Enter one of your church's registered rep emails and we'll send you a 6-digit code. Don't have one? Ask an organizer to add your email to your church."
             />
           </div>
         ) : (
@@ -138,7 +138,7 @@ function SignedInPortal({ churchId }: { churchId: string }) {
           <button className="btn accent" onClick={() => setModal({ kind: "player" })}>+ Register Player</button>
         </div>
         <p className="muted" style={{ marginTop: -6 }}>
-          Register everyone once; then pick from them for each game. Tap a photo to change it.
+          Register everyone once; then pick from them for each game. Tap a player to see their profile, or 📷 to change their photo.
           Team sheets: {Object.values(FORMATS).map((r) => `${r.label} ${r.starters} + ${r.maxSubs}`).join(" · ")}.
         </p>
         <div className="card team-body">
@@ -147,7 +147,7 @@ function SignedInPortal({ churchId }: { churchId: string }) {
           ) : (
             <div className="player-grid">
               {players.map((p) => (
-                <PlayerCard key={p.id} player={p} scope="church" onEdit={() => setModal({ kind: "player", player: p })} />
+                <PlayerCard key={p.id} player={p} church={church} scope="church" onEdit={() => setModal({ kind: "player", player: p })} />
               ))}
             </div>
           )}

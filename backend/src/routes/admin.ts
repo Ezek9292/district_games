@@ -24,28 +24,57 @@ adminRouter.put("/event", async (req, res) => {
 });
 
 // ---------- Churches ----------
-const churchEmail = z
-  .string().trim().toLowerCase()
-  .transform((v) => v || null)
-  .pipe(z.string().email("Enter a valid email for the church rep").nullable());
+const churchEmail = z.string().trim().toLowerCase().email("Enter a valid email for the church rep");
+const emailSelect = { id: true, email: true, lastLoginAt: true } as const;
+
+/** An email can belong to only one church; says which one already has it. */
+async function assertEmailsFree(emails: string[], churchId?: string) {
+  const clash = await prisma.churchEmail.findFirst({ where: { email: { in: emails } }, include: { church: true } });
+  if (!clash) return;
+  throw new HttpError(409, clash.churchId === churchId
+    ? `${clash.email} is already a rep email for this church.`
+    : `${clash.email} is already a rep email for ${clash.church.name}. Remove it there first.`);
+}
 
 /** Includes rep emails, which the public state leaves out. */
 adminRouter.get("/churches", async (_req, res) => {
   res.json(await prisma.church.findMany({
     orderBy: [{ order: "asc" }, { createdAt: "asc" }],
-    select: { id: true, email: true, lastLoginAt: true },
+    select: { id: true, lastLoginAt: true, emails: { select: emailSelect, orderBy: { createdAt: "asc" } } },
   }));
 });
 
 adminRouter.post("/churches", async (req, res) => {
-  const data = z.object({ name, color, email: churchEmail.default("") }).parse(req.body);
+  const { emails, ...data } = z
+    .object({ name, color, emails: z.array(churchEmail).max(20, "Up to 20 rep emails per church").default([]) })
+    .parse(req.body);
+  const unique = [...new Set(emails)];
+  await assertEmailsFree(unique);
   const order = await prisma.church.count();
-  res.status(201).json(await prisma.church.create({ data: { ...data, order } }));
+  res.status(201).json(await prisma.church.create({
+    data: { ...data, order, emails: { create: unique.map((email) => ({ email })) } },
+    include: { emails: { select: emailSelect } },
+  }));
 });
 
 adminRouter.patch("/churches/:id", async (req, res) => {
-  const data = z.object({ name, color, email: churchEmail }).partial().parse(req.body);
+  const data = z.object({ name, color }).partial().parse(req.body);
   res.json(await prisma.church.update({ where: { id: req.params.id }, data }));
+});
+
+adminRouter.post("/churches/:id/emails", async (req, res) => {
+  const email = churchEmail.parse(req.body?.email);
+  const church = await prisma.church.findUnique({ where: { id: req.params.id } });
+  if (!church) throw new HttpError(404, "Church not found");
+  await assertEmailsFree([email], church.id);
+  res.status(201).json(await prisma.churchEmail.create({ data: { email, churchId: church.id }, select: emailSelect }));
+});
+
+/** Removing an email also ends any session signed in with it (see requireChurch). */
+adminRouter.delete("/churches/:id/emails/:emailId", async (req, res) => {
+  const { count } = await prisma.churchEmail.deleteMany({ where: { id: req.params.emailId, churchId: req.params.id } });
+  if (!count) throw new HttpError(404, "That email isn't on this church.");
+  res.status(204).end();
 });
 
 adminRouter.delete("/churches/:id", async (req, res) => {

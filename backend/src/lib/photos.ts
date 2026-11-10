@@ -39,7 +39,7 @@ export const photoUpload = multer({
   },
 });
 
-/** Uploads a headshot, cropped square around the face, and returns where it lives. */
+/** Uploads a headshot, cropped square around the face (large enough for the player popup), and returns where it lives. */
 export function uploadPhoto(buffer: Buffer): Promise<{ url: string; publicId: string }> {
   if (!config) throw new HttpError(503, "Photo uploads aren't set up yet. Ask an organizer to configure Cloudinary.");
   return new Promise((resolve, reject) => {
@@ -48,7 +48,7 @@ export function uploadPhoto(buffer: Buffer): Promise<{ url: string; publicId: st
         {
           folder: env.CLOUDINARY_FOLDER,
           resource_type: "image",
-          transformation: [{ width: 400, height: 400, crop: "fill", gravity: "face" }, { quality: "auto" }],
+          transformation: [{ width: 1000, height: 1000, crop: "fill", gravity: "face" }, { quality: "auto:good" }],
         },
         (err, result) => {
           if (err || !result) {

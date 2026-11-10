@@ -279,3 +279,36 @@ table.standings .pts{ font-weight:700; color:var(--primary); }
   .field-row{ flex-direction:column; gap:0; }
 }
 .portal-main{ padding-top:28px; }
+
+/* ---------- Church rep emails ---------- */
+.email-list{ list-style:none; margin:0 0 8px; padding:0; border:1px solid var(--line); border-radius:8px; }
+.email-list li{ display:flex; align-items:center; gap:8px; padding:6px 6px 6px 12px; font-size:14px; }
+.email-list li + li{ border-top:1px solid var(--line); }
+.email-text{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.email-add{ display:flex; gap:8px; }
+.email-add input{ flex:1; min-width:0; }
+
+/* ---------- Player profile popup ---------- */
+.player-open{ display:block; width:100%; background:none; padding:0; border:0; color:inherit; cursor:pointer; text-align:center; font:inherit; }
+.player-open:focus-visible .headshot, .headshot-btn:focus-visible .headshot{ outline:2px solid var(--primary); outline-offset:2px; }
+.headshot-btn{ display:block; background:none; border:0; padding:0; cursor:pointer; border-radius:50%; }
+.headshot-wrap .upload-dot{ width:26px; height:26px; bottom:-2px; right:-4px; font-size:13px; overflow:hidden; cursor:pointer; }
+.headshot-wrap .upload-dot .file-overlay{ font-size:0; }
+.lineup-player{ display:flex; align-items:center; gap:8px; background:none; border:0; padding:0; color:inherit; font:inherit; text-align:left; cursor:pointer; }
+.lineup-player:hover span{ text-decoration:underline; }
+.profile{ text-align:center; }
+.profile-photo{
+  width:100%; max-width:340px; aspect-ratio:1/1; margin:4px auto 14px; border-radius:14px; overflow:hidden;
+  background:var(--surface-2); display:flex; align-items:center; justify-content:center; border:1px solid var(--line);
+  font-family:var(--font-display), 'Arial Narrow', sans-serif; font-size:96px; color:var(--ink-muted);
+}
+.profile-photo img{ width:100%; height:100%; object-fit:cover; display:block; }
+.profile-photo.busy img{ opacity:.5; }
+.profile h3{ margin-bottom:6px; }
+.profile-church{ display:flex; justify-content:center; margin-bottom:12px; }
+.profile-facts{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:0; }
+.profile-facts div{ background:var(--surface-2); border-radius:8px; padding:8px 6px; }
+.profile-facts dt{ font-size:10.5px; letter-spacing:.8px; text-transform:uppercase; color:var(--ink-muted); }
+.profile-facts dd{ margin:2px 0 0; font-weight:600; font-size:15px; }
+.profile .modal-actions{ justify-content:center; flex-wrap:wrap; }
+.photo-btn{ position:relative; overflow:hidden; }

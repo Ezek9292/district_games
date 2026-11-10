@@ -69,7 +69,11 @@ export type TournamentState = {
 
 export type Organizer = { id: string; email: string; name: string | null; lastLoginAt?: string | null };
 
-export type ChurchAccount = { id: string; name: string; color: string; email: string | null };
+/** The email a church session signed in with. */
+export type ChurchAccount = { id: string; name: string; color: string; email: string };
+
+/** A church rep's sign-in email; only organizers see these. */
+export type ChurchRepEmail = { id: string; email: string; lastLoginAt: string | null };
 
 export type Session =
   | { role: "organizer"; organizer: Organizer }

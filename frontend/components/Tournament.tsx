@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { DEFAULT_EVENT_NAME, errMessage, TEAM_COLORS } from "@/lib/utils";
-import type { Church, Fixture, Game, Player } from "@/lib/types";
+import type { Church, ChurchRepEmail, Fixture, Game, Player } from "@/lib/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
 import { useAuth } from "./Auth";
 import { useToast } from "./Toast";
@@ -52,11 +52,11 @@ export default function Tournament() {
   const churchById = (id: string) => churches.find((c) => c.id === id);
 
   // Rep emails aren't public; organizers fetch them separately, again whenever the board changes.
-  const [churchEmails, setChurchEmails] = useState<Record<string, string | null>>({});
+  const [churchEmails, setChurchEmails] = useState<Record<string, ChurchRepEmail[]>>({});
   useEffect(() => {
     if (!isOrganizer) { setChurchEmails({}); return; }
-    api<{ id: string; email: string | null }[]>("/api/churches")
-      .then((rows) => setChurchEmails(Object.fromEntries(rows.map((r) => [r.id, r.email]))))
+    api<{ id: string; emails: ChurchRepEmail[] }[]>("/api/churches")
+      .then((rows) => setChurchEmails(Object.fromEntries(rows.map((r) => [r.id, r.emails]))))
       .catch(() => {});
   }, [isOrganizer, state]);
 
@@ -178,7 +178,7 @@ export default function Tournament() {
         />
       )}
       {isOrganizer && modal?.kind === "church" && (
-        <ChurchModal church={modal.church} email={modal.church && churchEmails[modal.church.id]} onClose={closeModal} />
+        <ChurchModal church={modal.church} emails={modal.church && churchEmails[modal.church.id]} onClose={closeModal} />
       )}
       {isOrganizer && modal?.kind === "player" && (
         <PlayerModal churchId={modal.churchId} player={modal.player} scope="organizer" onClose={closeModal} />

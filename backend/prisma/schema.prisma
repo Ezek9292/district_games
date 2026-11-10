@@ -37,18 +37,30 @@ model OtpCode {
 }
 
 model Church {
-  id          String      @id @default(cuid())
+  id          String        @id @default(cuid())
   name        String
   color       String
-  /// The church rep signs in with a code sent to this address.
-  email       String?     @unique
+  /// Church reps sign in with a code sent to any of these addresses.
+  emails      ChurchEmail[]
   lastLoginAt DateTime?
-  order       Int         @default(0)
-  createdAt   DateTime    @default(now())
+  order       Int           @default(0)
+  createdAt   DateTime      @default(now())
   players     Player[]
-  fixturesA   Fixture[]   @relation("ChurchA")
-  fixturesB   Fixture[]   @relation("ChurchB")
+  fixturesA   Fixture[]     @relation("ChurchA")
+  fixturesB   Fixture[]     @relation("ChurchB")
   teamSheets  TeamSheet[]
+}
+
+/// A rep address for a church. Unique across all churches, so one email can't sign in to two.
+model ChurchEmail {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  churchId    String
+  church      Church    @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  lastLoginAt DateTime?
+
+  @@index([churchId])
 }
 
 /// Decides team-sheet size: see FORMATS in src/lib/formats.ts.

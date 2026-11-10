@@ -5,7 +5,7 @@ import { prisma } from "../prisma";
 import { HttpError } from "../lib/http";
 import { sendLoginCode } from "../lib/mailer";
 import { codesMatch, generateCode, hashCode, OTP_MAX_ATTEMPTS, OTP_RESEND_COOLDOWN_MS, OTP_TTL_MS } from "../lib/otp";
-import { readToken, signToken, type Role } from "../middleware/auth";
+import { findChurchSession, readToken, signToken, type Role } from "../middleware/auth";
 
 export const authRouter = Router();
 
@@ -29,8 +29,8 @@ const GENERIC_SENT = { message: "If that email is registered, a 6-digit code is 
 /** Looks up who is signing in. */
 async function findAccount(role: Role, email: string) {
   if (role === "church") {
-    const church = await prisma.church.findUnique({ where: { email } });
-    return church && { id: church.id, email, name: church.name };
+    const rep = await prisma.churchEmail.findUnique({ where: { email }, include: { church: true } });
+    return rep && { id: rep.church.id, email, name: rep.church.name };
   }
   const organizer = await prisma.organizer.findUnique({ where: { email } });
   return organizer && { id: organizer.id, email, name: organizer.name };
@@ -90,18 +90,20 @@ authRouter.post("/verify-otp", limiter, async (req, res) => {
   await prisma.$transaction([
     prisma.otpCode.update({ where: { id: otp.id }, data: { consumedAt: now } }),
     role === "church"
-      ? prisma.church.update({ where: { id: account.id }, data: { lastLoginAt: now } })
+      ? prisma.church.update({
+          where: { id: account.id },
+          data: { lastLoginAt: now, emails: { update: { where: { email }, data: { lastLoginAt: now } } } },
+        })
       : prisma.organizer.update({ where: { id: account.id }, data: { lastLoginAt: now } }),
   ]);
-  res.json({ token: signToken(role, account.id, email), ...(await sessionFor(role, account.id)) });
+  res.json({ token: signToken(role, account.id, email), ...(await sessionFor(role, account.id, email)) });
 });
 
 /** What the frontend needs to know about whoever is signed in. */
-async function sessionFor(role: Role, id: string) {
+async function sessionFor(role: Role, id: string, email: string) {
   if (role === "church") {
-    const church = await prisma.church.findUnique({ where: { id } });
-    if (!church) throw new HttpError(401, "This church is no longer registered.");
-    return { role, church: { id: church.id, name: church.name, color: church.color, email: church.email } };
+    const church = await findChurchSession(id, email);
+    return { role, church: { id: church.id, name: church.name, color: church.color, email } };
   }
   const organizer = await prisma.organizer.findUnique({ where: { id } });
   if (!organizer) throw new HttpError(401, "You are no longer an organizer.");
@@ -111,5 +113,5 @@ async function sessionFor(role: Role, id: string) {
 authRouter.get("/me", async (req, res) => {
   const token = readToken(req);
   if (!token) throw new HttpError(401, "Sign-in required");
-  res.json(await sessionFor(token.role, token.id));
+  res.json(await sessionFor(token.role, token.id, token.email));
 });

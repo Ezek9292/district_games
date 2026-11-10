@@ -9,7 +9,8 @@ church-games/
 **Who can do what**
 - **Viewers** (`/`, no login): standings, schedule, teams, rosters and photos, and line-ups once a game is played.
 - **Church reps** (`/church`, email + 6-digit code): register their church's players (gender, elder, photo)
-  and submit a team sheet for each upcoming fixture. An organizer sets each church's rep email.
+  and submit a team sheet for each upcoming fixture. An organizer adds (and removes) each church's rep emails;
+  a church can have several, but an email can belong to only one church.
 - **Organizers** (`/` → Organizer sign-in, email + 6-digit code): everything else — event name, churches and
   rep emails, games and their points rules, fixtures, results, any church's players, and other organizers.
 
@@ -67,6 +68,7 @@ npm run dev                          # http://localhost:3000
 | GET | `/api/auth/me` | signed in |
 | PUT | `/api/event` | organizer |
 | GET / POST / PATCH / DELETE | `/api/churches[/:id]` (GET lists rep emails) | organizer |
+| POST / DELETE | `/api/churches/:id/emails[/:emailId]` `{ email }` (removing one signs that rep out) | organizer |
 | POST / PATCH / DELETE | `/api/games[/:id]` (format, division, eldersOnly, points) | organizer |
 | POST / PUT / DELETE | `/api/fixtures[/:id]`, PUT `/api/fixtures/:id/result` `{ scoreA, scoreB }`, GET `/api/fixtures/:id/sheets` | organizer |
 | POST | `/api/churches/:churchId/players`, PATCH / DELETE `/api/players/:id`, POST `/api/players/:id/photo` | organizer |

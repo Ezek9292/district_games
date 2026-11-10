@@ -1,7 +1,11 @@
+"use client";
+
+import { useState } from "react";
 import { startersLabel, subsLabel } from "@/lib/formats";
 import type { Church, Game, Player, TeamSheet } from "@/lib/types";
 import { ChurchChip } from "./ChurchChip";
 import { Headshot } from "./PlayerCard";
+import { PlayerDetailsModal } from "./modals/PlayerDetailsModal";
 
 /** One church's submitted line-up, read-only. */
 export function Lineup({
@@ -26,11 +30,11 @@ export function Lineup({
       ) : (
         <>
           <div className="field-label">{startersLabel(format)}</div>
-          <ul>{starters.map((p) => <LineupRow key={p.id} player={p} />)}</ul>
+          <ul>{starters.map((p) => <LineupRow key={p.id} player={p} church={church} />)}</ul>
           {subs.length > 0 && (
             <>
               <div className="field-label" style={{ marginTop: 10 }}>{subsLabel(format)}</div>
-              <ul>{subs.map((p) => <LineupRow key={p.id} player={p} />)}</ul>
+              <ul>{subs.map((p) => <LineupRow key={p.id} player={p} church={church} />)}</ul>
             </>
           )}
         </>
@@ -39,11 +43,15 @@ export function Lineup({
   );
 }
 
-function LineupRow({ player }: { player: Player }) {
+function LineupRow({ player, church }: { player: Player; church: Church | undefined }) {
+  const [open, setOpen] = useState(false);
   return (
     <li>
-      <Headshot player={player} size={28} />
-      <span>{player.number && <span className="muted">#{player.number} </span>}{player.name}</span>
+      <button type="button" className="lineup-player" onClick={() => setOpen(true)} aria-label={`View ${player.name}`}>
+        <Headshot player={player} size={28} />
+        <span>{player.number && <span className="muted">#{player.number} </span>}{player.name}</span>
+      </button>
+      {open && <PlayerDetailsModal player={player} church={church} onClose={() => setOpen(false)} />}
     </li>
   );
 }

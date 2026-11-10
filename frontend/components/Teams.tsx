@@ -3,7 +3,7 @@
 import { api } from "@/lib/api";
 import { gameSummary, pointsSummary } from "@/lib/formats";
 import { errMessage, luminanceTextColor } from "@/lib/utils";
-import type { Church, Game, Player } from "@/lib/types";
+import type { Church, ChurchRepEmail, Game, Player } from "@/lib/types";
 import { PlayerCard } from "./PlayerCard";
 import { useToast } from "./Toast";
 
@@ -13,7 +13,7 @@ type Props = {
   playersByChurch: Record<string, Player[]>;
   organizerUnlocked: boolean;
   /** Rep emails by church id; only loaded for organizers. */
-  churchEmails: Record<string, string | null>;
+  churchEmails: Record<string, ChurchRepEmail[]>;
   onAddChurch: () => void;
   onEditChurch: (c: Church) => void;
   onAddGame: () => void;
@@ -58,14 +58,16 @@ export function Teams({ churches, games, playersByChurch, organizerUnlocked, chu
                 <div className="team-body">
                   {organizerUnlocked && (
                     <p className="pin-hint" style={{ marginTop: 0, marginBottom: 10 }}>
-                      Rep: {churchEmails[c.id] ?? <em>no email — the church can&apos;t sign in yet</em>}
+                      {churchEmails[c.id]?.length
+                        ? <>Reps: {churchEmails[c.id].map((e) => e.email).join(", ")}</>
+                        : <em>No rep email — the church can&apos;t sign in yet</em>}
                     </p>
                   )}
                   {!players.length && !organizerUnlocked && <p className="muted">No players registered yet.</p>}
                   <div className="player-grid">
                     {players.map((p) => (
                       <PlayerCard
-                        key={p.id} player={p}
+                        key={p.id} player={p} church={c}
                         scope={organizerUnlocked ? "organizer" : undefined}
                         onEdit={() => props.onEditPlayer(p)}
                       />

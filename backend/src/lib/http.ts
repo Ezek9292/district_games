@@ -19,7 +19,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   } else if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
     res.status(404).json({ error: "Not found" });
   } else if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-    res.status(409).json({ error: "That email is already used by another church." });
+    res.status(409).json({ error: "That email is already in use." });
   } else if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
     res.status(400).json({ error: "Referenced church or game does not exist" });
   } else {
