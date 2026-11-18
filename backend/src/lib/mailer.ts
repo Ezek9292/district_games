@@ -7,7 +7,15 @@ const transport = env.SMTP_HOST
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: env.SMTP_PORT === 465,
+      // On other ports, refuse to send the code unencrypted.
+      requireTLS: env.SMTP_PORT !== 465,
       auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
+      // Fail fast instead of hanging (nodemailer waits up to 2 minutes by default, and Cloudflare cuts
+      // requests off after 100 s, which the browser reports as "Can't reach the server"). A blocked SMTP
+      // port, e.g. 25 or 465 on Hetzner, shows up here as a connection timeout.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
     })
   : null;
 
