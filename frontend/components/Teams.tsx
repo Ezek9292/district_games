@@ -69,7 +69,7 @@ export function Teams({ churches, games, playersByChurch, organizerUnlocked, chu
                       <PlayerCard
                         key={p.id} player={p} church={c}
                         scope={organizerUnlocked ? "organizer" : undefined}
-                        onEdit={() => props.onEditPlayer(p)}
+                        onEdit={organizerUnlocked ? () => props.onEditPlayer(p) : undefined}
                       />
                     ))}
                     {organizerUnlocked && (
