@@ -33,6 +33,6 @@ app.use("/api", adminRouter);
 
 app.use(errorHandler);
 
-app.listen(env.PORT, () => {
-  console.log(`API listening on http://localhost:${env.PORT} ✅`);
+app.listen(env.PORT, env.HOST, () => {
+  console.log(`API listening on http://${env.HOST}:${env.PORT} ✅`);
 });

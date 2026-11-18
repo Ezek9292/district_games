@@ -4,6 +4,8 @@ import { z } from "zod";
 const schema = z.object({
   NODE_ENV: z.string().default("development"),
   PORT: z.coerce.number().default(4000),
+  // Only reachable through Nginx on the same machine. Set HOST=0.0.0.0 to reach it from other devices.
+  HOST: z.string().default("127.0.0.1"),
   DATABASE_URL: z.string().min(1),
   FRONTEND_ORIGIN: z.string().default("http://localhost:3000"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 characters"),

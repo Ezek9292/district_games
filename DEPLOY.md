@@ -5,11 +5,36 @@ Every push to `main` runs the CI builds; if both pass, GitHub Actions SSHes into
 in PM2. Everything below is one-time setup on an Ubuntu/Debian VPS.
 
 ```
-browser ──► Nginx :443 ──┬─ /api, /health ──► backend  (PM2, :4000)
-          (your domain)  └─ everything else ─► frontend (PM2, :3000)
+browser ─► Cloudflare ─► Nginx :443 ─┬─ districtgames-api.edonkor.dev ─► backend  (PM2, 127.0.0.1:4000)
+                                     └─ districtgames.edonkor.dev     ─► frontend (PM2, 127.0.0.1:3000)
 ```
 
-Both apps share one domain, so `NEXT_PUBLIC_API_URL` and `FRONTEND_ORIGIN` are both `https://your-domain`.
+So `NEXT_PUBLIC_API_URL=https://districtgames-api.edonkor.dev` and `FRONTEND_ORIGIN=https://districtgames.edonkor.dev`.
+
+## Quick setup (edonkor.dev server)
+
+The app runs on the portfolio server (`37.27.34.194`), next to the portfolio. That server already has Nginx,
+the firewall, the `deploy` user with the GitHub Actions key, and the Cloudflare certificate for
+`*.edonkor.dev`. From the repo folder in the VS Code terminal:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File server\setup-server.ps1
+```
+
+1. The first run creates `backend\.env.production` from your local `backend\.env`, with a new
+   `JWT_SECRET`, and stops. This is the live site's settings file. It stays on your PC (git ignores it).
+   Check every value is right for the live site, then run the script again.
+2. It logs in with `~/.ssh/edonkor_admin` (asks for its passphrase), uploads
+   [`server/setup-church-games.sh`](server/setup-church-games.sh) with the settings, and runs it. That
+   installs Node 22 and PM2, clones the repo to `/home/deploy/church-games`, runs `deploy.sh` and the seed as
+   `deploy`, and adds the Nginx config for both domains.
+3. It checks both sites and prints the GitHub secrets to add (step 5): `SSH_HOST=37.27.34.194`,
+   `SSH_USER=deploy`, `APP_DIR=/home/deploy/church-games`, and `SSH_PRIVATE_KEY` = the portfolio's
+   `~/.ssh/github_deploy`.
+
+To change a setting on the live site later, edit `backend\.env.production` and run the script again.
+
+The manual steps below are for any other server.
 
 ## 1. Install Node, PM2, Nginx
 
@@ -34,8 +59,8 @@ cp frontend/.env.local.example frontend/.env.local
 ```
 
 - `backend/.env`: the Supabase URLs, a fresh `JWT_SECRET`, `ORGANIZER_EMAILS`, SMTP and Cloudinary, plus
-  `NODE_ENV=production` and `FRONTEND_ORIGIN=https://your-domain`.
-- `frontend/.env.local`: `NEXT_PUBLIC_API_URL=https://your-domain`.
+  `NODE_ENV=production` and `FRONTEND_ORIGIN=https://districtgames.edonkor.dev`.
+- `frontend/.env.local`: `NEXT_PUBLIC_API_URL=https://districtgames-api.edonkor.dev`.
 
 These files stay on the server only; git ignores them and deploys never touch them.
 
@@ -53,11 +78,13 @@ pm2 status                          # both apps should be "online"
 
 ```nginx
 server {
-    server_name your-domain;
+    server_name districtgames-api.edonkor.dev;
+    client_max_body_size 6m;    # player photos are up to 5 MB
 
-    location /api/ {
+    location / {
         proxy_pass http://127.0.0.1:4000;
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         # Live updates (/api/stream) are a long-lived Server-Sent Events connection.
@@ -65,16 +92,16 @@ server {
         proxy_set_header Connection "";
         proxy_buffering off;
         proxy_read_timeout 1h;
-        client_max_body_size 6m;    # player photos are up to 5 MB
     }
+}
 
-    location /health {
-        proxy_pass http://127.0.0.1:4000;
-    }
+server {
+    server_name districtgames.edonkor.dev;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
@@ -84,8 +111,8 @@ server {
 ```bash
 sudo ln -s /etc/nginx/sites-available/church-games /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
-sudo apt-get install -y certbot python3-certbot-nginx && sudo certbot --nginx -d your-domain
-sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable   # keeps :3000/:4000 private
+sudo apt-get install -y certbot python3-certbot-nginx && sudo certbot --nginx -d districtgames.edonkor.dev -d districtgames-api.edonkor.dev
+sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable   # optional: apps already listen on 127.0.0.1 only
 ```
 
 ## 5. Give GitHub Actions SSH access
