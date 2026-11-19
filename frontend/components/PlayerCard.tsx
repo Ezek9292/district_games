@@ -5,18 +5,26 @@ import { api } from "@/lib/api";
 import { playerPaths, type RosterScope } from "@/lib/players";
 import { errMessage, photoProblem, photoSrc } from "@/lib/utils";
 import type { Church, Player } from "@/lib/types";
+import { Icon } from "./Icon";
 import { useToast } from "./Toast";
 import { PlayerDetailsModal } from "./modals/PlayerDetailsModal";
 
 export function Headshot({ player, size = 64 }: { player: Player; size?: number }) {
   return (
-    <span className="headshot" style={{ width: size, height: size, fontSize: size * 0.34 }}>
+    <span className="headshot" style={{ width: size, height: size, fontSize: size * 0.4 }}>
       {player.photoUrl
         // eslint-disable-next-line @next/next/no-img-element
-        ? <img src={photoSrc(player.photoUrl, size * 2)} alt="" loading="lazy" />
+        ? <img src={photoSrc(player.photoUrl, size * 2)} alt="" width={size} height={size} loading="lazy" decoding="async" />
         : (player.name || "?").trim().charAt(0).toUpperCase()}
     </span>
   );
+}
+
+/** "#7, male, elder": the facts shown under a player's name. */
+export function playerFacts(player: Player) {
+  return [player.number && `#${player.number}`, player.gender === "male" ? "male" : "female", player.isElder && "elder"]
+    .filter(Boolean)
+    .join(", ");
 }
 
 /** Uploads a new photo for `player` when `scope` allows editing the roster. */
@@ -61,7 +69,7 @@ export function PhotoInput({ onFile }: { onFile: (file: File) => void }) {
 
 /**
  * A roster tile. Tapping it opens the player's profile with a large photo.
- * With `scope`, the photo is uploadable (📷) and the player editable/removable.
+ * With `scope`, the photo is uploadable (camera button) and the player editable/removable.
  */
 export function PlayerCard({
   player, church, scope, onEdit,
@@ -88,25 +96,24 @@ export function PlayerCard({
           <Headshot player={player} />
         </button>
         {upload && (
-          <label className="upload-dot" title="Change photo">
-            {uploading ? "…" : "📷"}
+          <label className="upload-dot" title={uploading ? "Uploading photo" : "Change photo"}>
+            <span className="visually-hidden">Change photo for {player.name}</span>
+            <Icon name="camera" size={14} />
             <PhotoInput onFile={upload} />
           </label>
         )}
       </div>
       <button type="button" className="player-open" onClick={() => setOpen(true)}>
-        <div className="pname">{player.name}</div>
-        <div className="pnum">
-          {player.number && `#${player.number} · `}
-          {player.gender === "male" ? "M" : "F"}
-          {player.isElder && " · Elder"}
-        </div>
+        <span className="pname">{player.name}</span>
+        <span className="pnum">{playerFacts(player)}</span>
       </button>
       {scope && (
-        <>
-          <button className="rm" aria-label={`Remove ${player.name}`} onClick={remove}>×</button>
-          {onEdit && <button className="edit-link" onClick={onEdit}>Edit</button>}
-        </>
+        <div className="player-tools">
+          {onEdit && <button type="button" className="text-btn" onClick={onEdit}>Edit</button>}
+          <button type="button" className="text-btn danger" onClick={remove}>
+            Remove<span className="visually-hidden"> {player.name}</span>
+          </button>
+        </div>
       )}
       {open && (
         <PlayerDetailsModal

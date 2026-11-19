@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { errMessage } from "@/lib/utils";
 import type { Church, Fixture, Game } from "@/lib/types";
 import { ChurchChip } from "./ChurchChip";
+import { Icon } from "./Icon";
 import { useToast } from "./Toast";
 
 type Props = {
@@ -20,7 +21,7 @@ type Props = {
 export function Schedule({ churches, games, fixtures, organizerUnlocked, onAdd, onEdit, onResult, onLineups }: Props) {
   const toast = useToast();
   const churchById = (id: string) => churches.find((c) => c.id === id);
-  const gameName = (id: string | null) => games.find((g) => g.id === id)?.name ?? "—";
+  const gameName = (id: string | null) => games.find((g) => g.id === id)?.name ?? "No game set";
 
   function remove(fid: string) {
     if (confirm("Remove this fixture?")) api(`/api/fixtures/${fid}`, { method: "DELETE" }).catch((e) => toast(errMessage(e)));
@@ -34,66 +35,73 @@ export function Schedule({ churches, games, fixtures, organizerUnlocked, onAdd, 
   const order = Object.keys(groups).sort();
 
   return (
-    <section>
+    <section aria-labelledby="schedule-head">
       <div className="section-head">
-        <h2>Schedule</h2>
-        {organizerUnlocked && <button className="btn accent" onClick={onAdd}>+ Add Fixture</button>}
+        <h2 id="schedule-head">Schedule</h2>
+        {organizerUnlocked && (
+          <button type="button" className="btn accent" onClick={onAdd}><Icon name="plus" />Add fixture</button>
+        )}
       </div>
 
       {!fixtures.length ? (
         <div className="empty">
-          <div className="big">📋</div>
-          <p>
-            No fixtures yet.
+          <p className="state-title">No fixtures yet</p>
+          <p className="muted">
             {organizerUnlocked
-              ? ' Tap "+ Add Fixture" to build the schedule.'
-              : " Check back once the organizer sets the schedule."}
+              ? "Add the first fixture to build the schedule. Churches and games must exist first."
+              : "Check back once the organizers set the schedule."}
           </p>
         </div>
       ) : (
         order.map((key) => (
-          <div key={key}>
-            <div className="round-label">{key}</div>
-            <div className="card">
+          <div key={key} className="round">
+            <h3 className="round-head">{key}</h3>
+            <ul className="fixtures">
               {groups[key].map((f) => {
                 const ca = churchById(f.churchAId);
                 const cb = churchById(f.churchBId);
                 const isFinal = f.status === "final";
+                const hasScore = isFinal && f.scoreA !== null;
+                const won = (side: "A" | "B") => hasScore && f.outcome === side;
                 return (
-                  <div key={f.id} className="fixture">
-                    <div className="fx-teams">
-                      {ca ? <ChurchChip church={ca} /> : <span className="muted">TBD</span>}
-                      {isFinal && f.scoreA !== null
-                        ? <span className="fx-score">{f.scoreA} – {f.scoreB}</span>
-                        : <span className="fx-vs">vs</span>}
-                      {cb ? <ChurchChip church={cb} /> : <span className="muted">TBD</span>}
-                    </div>
-                    <div className="fx-meta">
+                  <li key={f.id} className={"fixture" + (hasScore ? " is-final" : "")}>
+                    <div className="fx-when">
+                      <span className="fx-time">{f.time || "Time to be set"}</span>
                       <span className="fx-game">{gameName(f.gameId)}</span>
-                      <br />
-                      {f.time || ""}
-                      {f.location ? " · " + f.location : ""}
+                      {f.location && <span className="muted">{f.location}</span>}
                     </div>
-                    <span className={"fx-status " + (isFinal ? "final" : "scheduled")}>
-                      {isFinal ? "Final" : "Scheduled"}
-                    </span>
-                    {f.scoreNote && <span className="muted">({f.scoreNote})</span>}
+                    <div className="fx-teams">
+                      <div className={"fx-side" + (won("A") ? " won" : "")}>
+                        {ca ? <ChurchChip church={ca} /> : <span className="muted">To be decided</span>}
+                        {hasScore && <span className="fx-score">{f.scoreA}</span>}
+                      </div>
+                      <div className={"fx-side" + (won("B") ? " won" : "")}>
+                        {cb ? <ChurchChip church={cb} /> : <span className="muted">To be decided</span>}
+                        {hasScore && <span className="fx-score">{f.scoreB}</span>}
+                      </div>
+                      <p className="fx-status">
+                        {isFinal ? "Final" : "Scheduled"}
+                        {f.scoreNote && <span className="muted"> ({f.scoreNote})</span>}
+                      </p>
+                    </div>
                     <div className="fx-actions">
                       {(organizerUnlocked || isFinal) && (
-                        <button className="btn ghost sm" onClick={() => onLineups(f)}>Line-ups</button>
+                        <button type="button" className="btn ghost sm" onClick={() => onLineups(f)}>Line-ups</button>
                       )}
                       {organizerUnlocked && (
                         <>
-                          <button className="btn accent sm" onClick={() => onResult(f)}>{isFinal ? "Edit result" : "Enter result"}</button>
-                          <button className="btn ghost sm" onClick={() => onEdit(f)}>Edit</button>
-                          <button className="btn danger sm" onClick={() => remove(f.id)}>×</button>
+                          <button type="button" className="btn sm" onClick={() => onResult(f)}>{isFinal ? "Edit result" : "Enter result"}</button>
+                          <button type="button" className="btn ghost sm" onClick={() => onEdit(f)}>Edit</button>
+                          <button type="button" className="btn ghost sm icon-only danger" aria-label="Remove fixture" onClick={() => remove(f.id)}>
+                            <Icon name="close" />
+                          </button>
                         </>
                       )}
                     </div>
-                  </div>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           </div>
         ))
       )}

@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { DEFAULT_EVENT_NAME, errMessage, TEAM_COLORS } from "@/lib/utils";
+import { DEFAULT_EVENT_NAME, errMessage } from "@/lib/utils";
 import type { Church, ChurchRepEmail, Fixture, Game, Player } from "@/lib/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
+import { useUrlParam } from "@/hooks/useUrlParam";
 import { useAuth } from "./Auth";
+import { Icon } from "./Icon";
 import { useToast } from "./Toast";
 import { Standings } from "./Standings";
 import { Schedule } from "./Schedule";
@@ -21,6 +23,8 @@ import { ResultModal } from "./modals/ResultModal";
 import { LineupsModal } from "./modals/LineupsModal";
 
 type Tab = "standings" | "schedule" | "teams";
+const TABS: Tab[] = ["standings", "schedule", "teams"];
+const TAB_LABELS: Record<Tab, string> = { standings: "Standings", schedule: "Schedule", teams: "Teams" };
 
 type ModalState =
   | null
@@ -39,7 +43,9 @@ export default function Tournament() {
   const isOrganizer = !!organizer;
   const { state, error, playersByChurch } = useTournamentData();
 
-  const [tab, setTab] = useState<Tab>("standings");
+  const [tabParam, setTabParam] = useUrlParam("tab", "standings");
+  const tab: Tab = TABS.includes(tabParam as Tab) ? (tabParam as Tab) : "standings";
+  const setTab = (t: Tab) => setTabParam(t);
   const [modal, setModal] = useState<ModalState>(null);
   const closeModal = () => setModal(null);
 
@@ -47,7 +53,6 @@ export default function Tournament() {
   const games = state?.games ?? [];
   const fixtures = state?.fixtures ?? [];
   const eventName = state?.event.name || DEFAULT_EVENT_NAME;
-  const pennantColors = churches.length ? churches.map((c) => c.color) : TEAM_COLORS.slice(0, 6);
   const gameById = (id: string | null) => games.find((g) => g.id === id);
   const churchById = (id: string) => churches.find((c) => c.id === id);
 
@@ -79,54 +84,66 @@ export default function Tournament() {
 
   return (
     <>
-      <div className="pennants">
-        {pennantColors.map((c, i) => <i key={i} style={{ background: c }} />)}
-      </div>
-      <header className="top">
-        <div className="top-inner">
-          <div className="brand">
+      <a className="skip" href="#main">Skip to content</a>
+      <header className="topbar">
+        <div className="container bar">
+          <div className="event">
             <h1
               key={eventName + String(isOrganizer)}
+              className={isOrganizer ? "editable" : undefined}
               contentEditable={isOrganizer}
               suppressContentEditableWarning
+              title={isOrganizer ? "Tap to rename the event" : undefined}
               onBlur={(e) => saveEventName(e.currentTarget)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); } }}
             >
               {eventName}
             </h1>
-            <span className="sub">{state?.event.subtitle || ""}</span>
+            {state?.event.subtitle && <p className="event-sub">{state.event.subtitle}</p>}
           </div>
-          <div className="header-actions">
-            <Link className="org-toggle" href="/church">
-              <span>{signedInChurch ? `${signedInChurch.name} ›` : "Church portal"}</span>
+          <div className="bar-actions">
+            <Link className="btn ghost" href="/church">
+              {signedInChurch ? signedInChurch.name : "Church portal"}
             </Link>
             <button
-              className={"org-toggle" + (isOrganizer ? " on" : "")}
+              type="button"
+              className={"btn ghost" + (isOrganizer ? " is-on" : "")}
               onClick={() => setModal({ kind: isOrganizer ? "organizers" : "login" })}
             >
-              <span className="dot" />
-              <span>{isOrganizer ? "Organizer ✓" : "Organizer sign-in"}</span>
+              {isOrganizer && <Icon name="check" />}
+              {isOrganizer ? "Organizer" : "Organizer sign-in"}
             </button>
           </div>
         </div>
+        <nav className="tabs" aria-label="Scoreboard">
+          <div className="container tabs-row" role="tablist">
+            {TABS.map((t) => (
+              <button
+                key={t} type="button" role="tab" id={`tab-${t}`} aria-controls="main"
+                aria-selected={tab === t} className="tab" onClick={() => setTab(t)}
+              >
+                {TAB_LABELS[t]}
+              </button>
+            ))}
+          </div>
+        </nav>
       </header>
 
-      <nav className="tabs">
-        <div className="tabs-inner">
-          {(["standings", "schedule", "teams"] as Tab[]).map((t) => (
-            <button key={t} className={"tab" + (tab === t ? " active" : "")} onClick={() => setTab(t)}>
-              {t[0].toUpperCase() + t.slice(1)}
-            </button>
-          ))}
-        </div>
-      </nav>
-
-      <main className="wrap">
+      <main id="main" className="container wrap" role="tabpanel" aria-labelledby={`tab-${tab}`}>
         {!state ? (
-          <div className="empty">
-            <div className="big">{error ? "⚠️" : "⏳"}</div>
-            <p>{error ?? "Loading tournament data… if this takes a while, check your connection."}</p>
-          </div>
+          error ? (
+            <div className="state-msg" role="alert">
+              <Icon name="alert" size={24} />
+              <div>
+                <p className="state-title">The scoreboard didn&apos;t load</p>
+                <p className="muted">{error}. Check your connection; the page reconnects by itself.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="skeleton" aria-busy="true" aria-label="Loading the scoreboard">
+              {Array.from({ length: 6 }, (_, i) => <span key={i} />)}
+            </div>
+          )
         ) : (
           <>
             {tab === "standings" && <Standings churches={churches} games={games} fixtures={fixtures} />}
@@ -155,7 +172,7 @@ export default function Tournament() {
             )}
           </>
         )}
-        <footer className="note">Live scoreboard — results update automatically. 🏆</footer>
+        <footer className="note">Live scoreboard. Results appear here as soon as they are saved.</footer>
       </main>
 
       {modal?.kind === "login" && <LoginModal onClose={closeModal} />}

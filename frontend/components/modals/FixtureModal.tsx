@@ -69,8 +69,8 @@ export function FixtureModal({
         </div>
       </div>
       <div className="modal-actions">
-        <button className="btn ghost" onClick={onClose}>Cancel</button>
-        <button className="btn accent" onClick={save}>Save</button>
+        <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn accent" onClick={save}>Save</button>
       </div>
     </Modal>
   );

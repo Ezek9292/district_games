@@ -2,8 +2,9 @@
 
 import { api } from "@/lib/api";
 import { gameSummary, pointsSummary } from "@/lib/formats";
-import { errMessage, luminanceTextColor } from "@/lib/utils";
+import { errMessage } from "@/lib/utils";
 import type { Church, ChurchRepEmail, Game, Player } from "@/lib/types";
+import { Icon } from "./Icon";
 import { PlayerCard } from "./PlayerCard";
 import { useToast } from "./Toast";
 
@@ -30,104 +31,111 @@ export function Teams({ churches, games, playersByChurch, organizerUnlocked, chu
   }
 
   return (
-    <section>
+    <section aria-labelledby="teams-head">
       <div className="section-head">
-        <h2>Teams</h2>
-        {organizerUnlocked && <button className="btn accent" onClick={props.onAddChurch}>+ Add Church</button>}
-      </div>
-
-      <div className="team-grid">
-        {!churches.length ? (
-          <div className="empty" style={{ gridColumn: "1/-1" }}>
-            <div className="big">⛪</div>
-            <p>
-              {organizerUnlocked
-                ? 'Tap "+ Add Church" to register the first team.'
-                : "Churches will appear here once the organizer adds them."}
-            </p>
-          </div>
-        ) : (
-          churches.map((c) => {
-            const players = playersByChurch[c.id] ?? [];
-            return (
-              <div key={c.id} className="card team-card">
-                <div className="team-head" style={{ background: c.color, color: luminanceTextColor(c.color) }}>
-                  <h3>{c.name}</h3>
-                  <span className="count">{players.length} players</span>
-                </div>
-                <div className="team-body">
-                  {organizerUnlocked && (
-                    <p className="pin-hint" style={{ marginTop: 0, marginBottom: 10 }}>
-                      {churchEmails[c.id]?.length
-                        ? <>Reps: {churchEmails[c.id].map((e) => e.email).join(", ")}</>
-                        : <em>No rep email — the church can&apos;t sign in yet</em>}
-                    </p>
-                  )}
-                  {!players.length && !organizerUnlocked && <p className="muted">No players registered yet.</p>}
-                  <div className="player-grid">
-                    {players.map((p) => (
-                      <PlayerCard
-                        key={p.id} player={p} church={c}
-                        scope={organizerUnlocked ? "organizer" : undefined}
-                        onEdit={organizerUnlocked ? () => props.onEditPlayer(p) : undefined}
-                      />
-                    ))}
-                    {organizerUnlocked && (
-                      <div className="player">
-                        <button className="add-player" onClick={() => props.onAddPlayer(c.id)}>+</button>
-                        <div className="pname muted">Add player</div>
-                      </div>
-                    )}
-                  </div>
-                  {organizerUnlocked && (
-                    <div className="lock-row">
-                      <button className="btn ghost sm" onClick={() => props.onEditChurch(c)}>Edit church</button>
-                      <button
-                        className="btn danger sm"
-                        onClick={() => remove(`Remove ${c.name}? Its players, team sheets and fixtures will be deleted too.`, `/api/churches/${c.id}`)}
-                      >
-                        Remove church
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })
+        <h2 id="teams-head">Teams</h2>
+        {organizerUnlocked && (
+          <button type="button" className="btn accent" onClick={props.onAddChurch}><Icon name="plus" />Add church</button>
         )}
       </div>
 
-      <div className="section-head" style={{ marginTop: 34 }}>
-        <h2 style={{ fontSize: 16 }}>Games</h2>
-        {organizerUnlocked && <button className="btn ghost sm" onClick={props.onAddGame}>+ Add Game</button>}
+      {!churches.length ? (
+        <div className="empty">
+          <p className="state-title">No churches yet</p>
+          <p className="muted">
+            {organizerUnlocked
+              ? "Add the first church to register its team."
+              : "Churches will appear here once the organizers add them."}
+          </p>
+        </div>
+      ) : (
+        churches.map((c) => {
+          const players = playersByChurch[c.id] ?? [];
+          const reps = churchEmails[c.id] ?? [];
+          return (
+            <article key={c.id} className="team" aria-labelledby={`team-${c.id}`}>
+              <header className="team-head">
+                <span className="swatch lg" style={{ background: c.color }} aria-hidden="true" />
+                <h3 id={`team-${c.id}`}>{c.name}</h3>
+                <span className="count">{players.length} {players.length === 1 ? "player" : "players"}</span>
+                {organizerUnlocked && (
+                  <div className="team-actions">
+                    <button type="button" className="btn ghost sm" onClick={() => props.onEditChurch(c)}>Edit church</button>
+                    <button
+                      type="button" className="btn ghost sm danger"
+                      onClick={() => remove(`Remove ${c.name}? Its players, team sheets and fixtures will be deleted too.`, `/api/churches/${c.id}`)}
+                    >
+                      Remove church
+                    </button>
+                  </div>
+                )}
+              </header>
+              {organizerUnlocked && (
+                <p className={"reps" + (reps.length ? "" : " warn")}>
+                  {reps.length
+                    ? <>Reps: {reps.map((e) => e.email).join(", ")}</>
+                    : <>No rep email yet, so this church can&apos;t sign in. Add one under Edit church.</>}
+                </p>
+              )}
+              {!players.length && !organizerUnlocked ? (
+                <p className="muted">No players registered yet.</p>
+              ) : (
+                <ul className="player-grid">
+                  {players.map((p) => (
+                    <li key={p.id}>
+                      <PlayerCard
+                        player={p} church={c}
+                        scope={organizerUnlocked ? "organizer" : undefined}
+                        onEdit={organizerUnlocked ? () => props.onEditPlayer(p) : undefined}
+                      />
+                    </li>
+                  ))}
+                  {organizerUnlocked && (
+                    <li>
+                      <button type="button" className="add-player" onClick={() => props.onAddPlayer(c.id)}>
+                        <Icon name="plus" size={22} />
+                        <span>Add player</span>
+                      </button>
+                    </li>
+                  )}
+                </ul>
+              )}
+            </article>
+          );
+        })
+      )}
+
+      <div className="section-head sub">
+        <h2>Games</h2>
+        {organizerUnlocked && <button type="button" className="btn sm" onClick={props.onAddGame}><Icon name="plus" />Add game</button>}
       </div>
-      <div className="card">
-        {!games.length ? (
-          <p className="muted" style={{ padding: 16, margin: 0 }}>No games added yet.</p>
-        ) : (
-          games.map((g) => (
-            <div key={g.id} className="game-row">
-              <div>
+      {!games.length ? (
+        <p className="muted">No games added yet.</p>
+      ) : (
+        <ul className="games">
+          {games.map((g) => (
+            <li key={g.id} className="game-row">
+              <div className="game-info">
                 <strong>{g.name}</strong>
-                <div className="muted" style={{ fontSize: 13 }}>{gameSummary(g)}</div>
-                <div className="pts-rule">{pointsSummary(g)}</div>
-                {g.description && <div className="muted" style={{ fontSize: 13 }}>{g.description}</div>}
+                <span className="muted">{gameSummary(g)}</span>
+                <span className="pts-rule">{pointsSummary(g)}</span>
+                {g.description && <span className="muted">{g.description}</span>}
               </div>
               {organizerUnlocked && (
                 <div className="fx-actions">
-                  <button className="btn ghost sm" onClick={() => props.onEditGame(g)}>Edit / points</button>
+                  <button type="button" className="btn ghost sm" onClick={() => props.onEditGame(g)}>Edit / points</button>
                   <button
-                    className="btn danger sm"
+                    type="button" className="btn ghost sm danger"
                     onClick={() => remove("Remove this game? Fixtures referencing it will be kept but orphaned.", `/api/games/${g.id}`)}
                   >
                     Remove
                   </button>
                 </div>
               )}
-            </div>
-          ))
-        )}
-      </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

@@ -33,11 +33,11 @@ export function PlayerDetailsModal({
         <h3>{player.name}</h3>
         {church && <div className="profile-church"><ChurchChip church={church} /></div>}
         <dl className="profile-facts">
-          <div><dt>Number</dt><dd>{player.number ? `#${player.number}` : "—"}</dd></div>
+          <div><dt>Number</dt><dd>{player.number ? `#${player.number}` : "None"}</dd></div>
           <div><dt>Gender</dt><dd>{player.gender === "male" ? "Male" : "Female"}</dd></div>
           <div><dt>Elder</dt><dd>{player.isElder ? "Yes" : "No"}</dd></div>
         </dl>
-        {!player.photoUrl && <p className="muted" style={{ margin: "12px 0 0" }}>No photo uploaded yet.</p>}
+        {!player.photoUrl && <p className="muted gap-top">No photo uploaded yet.</p>}
         <div className="modal-actions">
           {onPhoto && (
             <label className="btn ghost photo-btn">
@@ -45,8 +45,8 @@ export function PlayerDetailsModal({
               <PhotoInput onFile={onPhoto} />
             </label>
           )}
-          {onEdit && <button className="btn ghost" onClick={onEdit}>Edit details</button>}
-          <button className="btn accent" onClick={onClose}>Close</button>
+          {onEdit && <button type="button" className="btn ghost" onClick={onEdit}>Edit details</button>}
+          <button type="button" className="btn accent" onClick={onClose}>Close</button>
         </div>
       </div>
     </Modal>,

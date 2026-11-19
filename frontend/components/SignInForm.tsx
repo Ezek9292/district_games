@@ -58,8 +58,8 @@ export function SignInForm({
         />
       </div>
       <div className="modal-actions">
-        {onCancel && <button className="btn ghost" onClick={onCancel}>Cancel</button>}
-        <button className="btn accent" onClick={requestCode} disabled={busy}>Send code</button>
+        {onCancel && <button type="button" className="btn ghost" onClick={onCancel}>Cancel</button>}
+        <button type="button" className="btn accent" onClick={requestCode} disabled={busy}>Send code</button>
       </div>
     </>
   ) : (
@@ -74,9 +74,9 @@ export function SignInForm({
         />
       </div>
       <div className="modal-actions">
-        <button className="btn ghost" onClick={() => { setStep("email"); setCode(""); }}>Back</button>
-        <button className="btn ghost" onClick={requestCode} disabled={busy}>Resend</button>
-        <button className="btn accent" onClick={verify} disabled={busy || code.length !== 6}>Sign in</button>
+        <button type="button" className="btn ghost" onClick={() => { setStep("email"); setCode(""); }}>Back</button>
+        <button type="button" className="btn ghost" onClick={requestCode} disabled={busy}>Resend</button>
+        <button type="button" className="btn accent" onClick={verify} disabled={busy || code.length !== 6}>Sign in</button>
       </div>
     </>
   );

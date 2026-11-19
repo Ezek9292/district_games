@@ -33,7 +33,7 @@ export function Lineup({
           <ul>{starters.map((p) => <LineupRow key={p.id} player={p} church={church} />)}</ul>
           {subs.length > 0 && (
             <>
-              <div className="field-label" style={{ marginTop: 10 }}>{subsLabel(format)}</div>
+              <div className="field-label gap-top">{subsLabel(format)}</div>
               <ul>{subs.map((p) => <LineupRow key={p.id} player={p} church={church} />)}</ul>
             </>
           )}

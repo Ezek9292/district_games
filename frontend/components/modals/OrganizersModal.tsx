@@ -37,25 +37,25 @@ export function OrganizersModal({ onClose }: { onClose: () => void }) {
     <Modal onClose={onClose}>
       <h3>Organizers</h3>
       <p className="muted">Signed in as <strong>{me?.email}</strong>. Organizers sign in with a code sent to their email.</p>
-      <div style={{ marginBottom: 14 }}>
+      <ul className="email-list">
         {organizers.map((o) => (
-          <div key={o.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--line)" }}>
-            <span>{o.email}</span>
-            {o.id !== me?.id && <button className="btn danger sm" onClick={() => remove(o)}>Remove</button>}
-          </div>
+          <li key={o.id}>
+            <span className="email-text">{o.email}</span>
+            {o.id !== me?.id && <button type="button" className="btn ghost sm danger" onClick={() => remove(o)}>Remove</button>}
+          </li>
         ))}
-      </div>
+      </ul>
       <div className="field">
-        <label className="field-label">Add organizer by email</label>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ flex: 1 }}
+        <label className="field-label" htmlFor="new-organizer">Add organizer by email</label>
+        <div className="email-add">
+          <input id="new-organizer" name="email" type="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") add(); }} />
-          <button className="btn" onClick={add}>Add</button>
+          <button type="button" className="btn" onClick={add}>Add</button>
         </div>
       </div>
       <div className="modal-actions">
-        <button className="btn danger" onClick={() => { signOut("organizer"); onClose(); toast("Signed out"); }}>Sign out</button>
-        <button className="btn ghost" onClick={onClose}>Close</button>
+        <button type="button" className="btn danger" onClick={() => { signOut("organizer"); onClose(); toast("Signed out"); }}>Sign out</button>
+        <button type="button" className="btn ghost" onClick={onClose}>Close</button>
       </div>
     </Modal>
   );

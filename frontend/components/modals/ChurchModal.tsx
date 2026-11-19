@@ -122,8 +122,8 @@ export function ChurchModal({
         </div>
       </div>
       <div className="modal-actions">
-        <button className="btn ghost" onClick={onClose}>Cancel</button>
-        <button className="btn accent" onClick={save} disabled={busy}>{church ? "Save" : "Add Church"}</button>
+        <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn accent" onClick={save} disabled={busy}>{church ? "Save" : "Add Church"}</button>
       </div>
     </Modal>
   );

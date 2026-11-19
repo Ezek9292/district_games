@@ -40,8 +40,8 @@ export function LineupsModal({
 
   return (
     <Modal onClose={onClose} wide>
-      <h3>Line-ups — {game?.name ?? "Game"}</h3>
-      <p className="muted">{fixture.round}{fixture.time && ` · ${fixture.time}`}{fixture.location && ` · ${fixture.location}`}</p>
+      <h3>Line-ups: {game?.name ?? "Game"}</h3>
+      <p className="muted">{[fixture.round, fixture.time, fixture.location].filter(Boolean).join(", ")}</p>
       {!sheets ? (
         <p className="muted">Loading…</p>
       ) : (
@@ -52,7 +52,7 @@ export function LineupsModal({
         </div>
       )}
       <div className="modal-actions">
-        <button className="btn ghost" onClick={onClose}>Close</button>
+        <button type="button" className="btn ghost" onClick={onClose}>Close</button>
       </div>
     </Modal>
   );

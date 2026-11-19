@@ -28,11 +28,11 @@ export function ineligibleReason(game: Game, player: Player): string | null {
 export function gameSummary(g: Game) {
   const f = FORMATS[g.format];
   const who = [g.division !== "open" ? DIVISIONS[g.division] : "", g.eldersOnly ? "Elders" : ""].filter(Boolean).join(", ");
-  return `${f.label}${who ? ` · ${who}` : ""} · ${f.starters} + up to ${f.maxSubs} subs`;
+  return `${f.label}${who ? `, ${who.toLowerCase()}` : ""}: ${f.starters} + up to ${f.maxSubs} subs`;
 }
 
 export function pointsSummary(g: Game) {
   return g.format === "football"
-    ? `Win ${g.pointsWin} · Draw ${g.pointsDraw} · Loss ${g.pointsLoss}`
-    : `Win ${g.pointsWin} · Loss ${g.pointsLoss}`;
+    ? `Win ${g.pointsWin}, draw ${g.pointsDraw}, loss ${g.pointsLoss}`
+    : `Win ${g.pointsWin}, loss ${g.pointsLoss}`;
 }

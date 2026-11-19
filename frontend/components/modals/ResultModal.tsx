@@ -33,11 +33,11 @@ export function ResultModal({
   if (filled && game) {
     if (a === b) {
       preview = game.format === "football"
-        ? `Draw — both get ${game.pointsDraw} pt${game.pointsDraw === 1 ? "" : "s"}`
+        ? `Draw: both get ${game.pointsDraw} pt${game.pointsDraw === 1 ? "" : "s"}`
         : `${game.name} can't end in a draw.`;
     } else {
       const [winner, loser] = a > b ? [nameA, nameB] : [nameB, nameA];
-      preview = `${winner} wins: +${game.pointsWin} pts · ${loser}: +${game.pointsLoss}`;
+      preview = `${winner} wins and gets ${game.pointsWin} pts; ${loser} gets ${game.pointsLoss}.`;
     }
   }
 
@@ -58,32 +58,32 @@ export function ResultModal({
     <Modal onClose={onClose}>
       <h3>Enter Result</h3>
       <p className="muted">
-        {game?.name ?? "Game"}{game && <> · {pointsSummary(game)}</>}
+        {game?.name ?? "Game"}{game && <>. {pointsSummary(game)}.</>}
       </p>
       <div className="field-row">
         <div className="field">
-          <label className="field-label">{nameA} — {scoreLabel}</label>
-          <input type="number" min={0} inputMode="numeric" autoFocus value={scoreA} onChange={(e) => setScoreA(e.target.value)} />
+          <label className="field-label" htmlFor="score-a">{nameA}: {scoreLabel.toLowerCase()}</label>
+          <input id="score-a" name="scoreA" type="number" min={0} inputMode="numeric" autoFocus value={scoreA} onChange={(e) => setScoreA(e.target.value)} />
         </div>
         <div className="field">
-          <label className="field-label">{nameB} — {scoreLabel}</label>
-          <input type="number" min={0} inputMode="numeric" value={scoreB} onChange={(e) => setScoreB(e.target.value)} />
+          <label className="field-label" htmlFor="score-b">{nameB}: {scoreLabel.toLowerCase()}</label>
+          <input id="score-b" name="scoreB" type="number" min={0} inputMode="numeric" value={scoreB} onChange={(e) => setScoreB(e.target.value)} />
         </div>
       </div>
       <div className="field">
         <label className="field-label">Note (optional)</label>
         <input
-          placeholder={game?.format === "volleyball" ? "e.g. 25–21, 22–25, 15–12" : "e.g. Won after extra time"}
+          placeholder={game?.format === "volleyball" ? "e.g. 25-21, 22-25, 15-12" : "e.g. Won after extra time"}
           maxLength={40} value={scoreNote} onChange={(e) => setScoreNote(e.target.value)}
         />
       </div>
       {preview && <p className="result-preview">{preview}</p>}
       <div className="modal-actions">
         {fixture.status === "final" && (
-          <button className="btn danger" onClick={() => save(true)} disabled={busy}>Clear result</button>
+          <button type="button" className="btn danger" onClick={() => save(true)} disabled={busy}>Clear result</button>
         )}
-        <button className="btn ghost" onClick={onClose}>Cancel</button>
-        <button className="btn accent" onClick={() => save()} disabled={busy || !filled}>Save result</button>
+        <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn accent" onClick={() => save()} disabled={busy || !filled}>Save result</button>
       </div>
     </Modal>
   );

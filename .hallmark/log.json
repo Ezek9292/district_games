@@ -1,0 +1,27 @@
+[
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "sport",
+  "axes": "light/display-condensed/chromatic-volt",
+  "hero": "none (app)",
+  "nav": "kept: app bar over sticky tab row",
+  "footer": "one-line note",
+  "imagery": "user photos only",
+  "photos": [],
+  "entry": "standings sheet",
+  "fingerprint": "app/sport/sheet-switcher/fixture-stack/roster-list",
+  "sections": [
+   "standings",
+   "schedule",
+   "teams",
+   "church portal"
+  ],
+  "signature": "the standings sheet, leader points on volt",
+  "waived": [],
+  "prompt": "church district games scoreboard: standings, fixtures, results, team rosters and team sheets for church reps and organizers",
+  "date": "2026-11-19"
+ }
+]

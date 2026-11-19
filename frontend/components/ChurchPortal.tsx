@@ -4,11 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { FORMATS } from "@/lib/formats";
-import { luminanceTextColor } from "@/lib/utils";
 import type { Fixture, Player, TeamSheet } from "@/lib/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
 import { useAuth } from "./Auth";
 import { ChurchChip } from "./ChurchChip";
+import { Icon } from "./Icon";
 import { PlayerCard } from "./PlayerCard";
 import { SignInForm } from "./SignInForm";
 import { useToast } from "./Toast";
@@ -27,24 +27,29 @@ export default function ChurchPortal() {
 
   return (
     <>
-      <header className="top">
-        <div className="top-inner">
-          <div className="brand">
+      <a className="skip" href="#main">Skip to content</a>
+      <header className="topbar">
+        <div className="container bar">
+          <div className="event">
             <h1>{church ? church.name : "Church Portal"}</h1>
-            <span className="sub">Team registration &amp; team sheets</span>
+            <p className="event-sub">Team registration and team sheets</p>
           </div>
-          <div className="header-actions">
-            <Link className="org-toggle" href="/">‹ Scoreboard</Link>
-            {church && <button className="org-toggle" onClick={() => signOut("church")}>Sign out</button>}
+          <div className="bar-actions">
+            <Link className="btn ghost" href="/"><Icon name="back" />Scoreboard</Link>
+            {church && (
+              <button type="button" className="btn ghost" onClick={() => signOut("church")}><Icon name="out" />Sign out</button>
+            )}
           </div>
         </div>
       </header>
-      <main className="wrap portal-main">
+      <main id="main" className="container wrap">
         {!ready ? (
-          <div className="empty"><div className="big">⏳</div><p>Loading…</p></div>
+          <div className="skeleton" aria-busy="true" aria-label="Loading">
+            {Array.from({ length: 4 }, (_, i) => <span key={i} />)}
+          </div>
         ) : !church ? (
-          <div className="card narrow-card">
-            <h3 className="card-title">Church sign-in</h3>
+          <div className="signin">
+            <h2>Church sign-in</h2>
             <SignInForm
               as="church"
               intro="Enter one of your church's registered rep emails and we'll send you a 6-digit code. Don't have one? Ask an organizer to add your email to your church."
@@ -71,7 +76,19 @@ function SignedInPortal({ churchId }: { churchId: string }) {
   }, [state]);
 
   if (!state) {
-    return <div className="empty"><div className="big">{error ? "⚠️" : "⏳"}</div><p>{error ?? "Loading…"}</p></div>;
+    return error ? (
+      <div className="state-msg" role="alert">
+        <Icon name="alert" size={24} />
+        <div>
+          <p className="state-title">Your church&apos;s page didn&apos;t load</p>
+          <p className="muted">{error}. Check your connection; the page reconnects by itself.</p>
+        </div>
+      </div>
+    ) : (
+      <div className="skeleton" aria-busy="true" aria-label="Loading">
+        {Array.from({ length: 4 }, (_, i) => <span key={i} />)}
+      </div>
+    );
   }
 
   const church = state.churches.find((c) => c.id === churchId);
@@ -87,17 +104,20 @@ function SignedInPortal({ churchId }: { churchId: string }) {
   return (
     <>
       {church && (
-        <div className="portal-banner" style={{ background: church.color, color: luminanceTextColor(church.color) }}>
-          <strong>{players.length}</strong> registered · {count((p) => p.gender === "male")} men · {count((p) => p.gender === "female")} women · {count((p) => p.isElder)} elders
-        </div>
+        <dl className="stats" aria-label="Your squad">
+          <div><dt>Registered</dt><dd>{players.length}</dd></div>
+          <div><dt>Men</dt><dd>{count((p) => p.gender === "male")}</dd></div>
+          <div><dt>Women</dt><dd>{count((p) => p.gender === "female")}</dd></div>
+          <div><dt>Elders</dt><dd>{count((p) => p.isElder)}</dd></div>
+        </dl>
       )}
 
-      <section style={{ marginBottom: 34 }}>
-        <div className="section-head"><h2>Upcoming Games</h2></div>
+      <section className="block" aria-labelledby="upcoming-head">
+        <div className="section-head"><h2 id="upcoming-head">Upcoming Games</h2></div>
         {!upcoming.length ? (
-          <div className="card"><p className="muted" style={{ padding: 16, margin: 0 }}>No upcoming fixtures yet. They&apos;ll appear here once the organizers set the schedule.</p></div>
+          <p className="muted">No upcoming fixtures yet. They&apos;ll appear here once the organizers set the schedule.</p>
         ) : (
-          <div className="card">
+          <ul className="fixtures">
             {upcoming.map((f) => {
               const game = gameById(f.gameId);
               const opponent = churchById(f.churchAId === churchId ? f.churchBId : f.churchAId);
@@ -105,80 +125,98 @@ function SignedInPortal({ churchId }: { churchId: string }) {
               const starters = sheet?.players.filter((p) => p.role === "starter").length ?? 0;
               const subs = sheet ? sheet.players.length - starters : 0;
               return (
-                <div key={f.id} className="fixture">
+                <li key={f.id} className="fixture">
+                  <div className="fx-when">
+                    <span className="fx-time">{f.time || "Time to be set"}</span>
+                    <span className="fx-game">{game?.name ?? "No game set"}</span>
+                    {f.round && <span className="muted">{f.round}</span>}
+                    {f.location && <span className="muted">{f.location}</span>}
+                  </div>
                   <div className="fx-teams">
-                    <span className="fx-vs">vs</span>
-                    {opponent ? <ChurchChip church={opponent} /> : <span className="muted">TBD</span>}
+                    <div className="fx-side">
+                      <span className="muted fx-vs">vs</span>
+                      {opponent ? <ChurchChip church={opponent} /> : <span className="muted">To be decided</span>}
+                    </div>
+                    <p className={"fx-status" + (sheet ? " ok" : " todo")}>
+                      {sheet
+                        ? <><Icon name="check" size={16} />Team sheet saved: {starters} starting, {subs} on the bench</>
+                        : "No team sheet yet"}
+                    </p>
                   </div>
-                  <div className="fx-meta">
-                    <span className="fx-game">{game?.name ?? "—"}</span>
-                    <br />{f.round}{f.time && ` · ${f.time}`}{f.location && ` · ${f.location}`}
-                  </div>
-                  <span className={"fx-status " + (sheet ? "final" : "scheduled")}>
-                    {sheet ? `Sheet ✓ ${starters} + ${subs}` : "No team sheet"}
-                  </span>
                   <div className="fx-actions">
                     <button
-                      className={"btn sm " + (sheet ? "ghost" : "accent")}
+                      type="button"
+                      className={"btn " + (sheet ? "" : "accent")}
                       onClick={() => game ? setModal({ kind: "sheet", fixture: f }) : toast("This fixture has no game yet.")}
                     >
                       {sheet ? "Edit team sheet" : "Pick team"}
                     </button>
                   </div>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         )}
       </section>
 
-      <section style={{ marginBottom: 34 }}>
+      <section className="block" aria-labelledby="players-head">
         <div className="section-head">
-          <h2>Registered Players</h2>
-          <button className="btn accent" onClick={() => setModal({ kind: "player" })}>+ Register Player</button>
+          <h2 id="players-head">Registered Players</h2>
+          <button type="button" className="btn" onClick={() => setModal({ kind: "player" })}><Icon name="plus" />Register player</button>
         </div>
-        <p className="muted" style={{ marginTop: -6 }}>
-          Register everyone once; then pick from them for each game. Tap a player to see their profile, or 📷 to change their photo.
-          Team sheets: {Object.values(FORMATS).map((r) => `${r.label} ${r.starters} + ${r.maxSubs}`).join(" · ")}.
+        <p className="muted intro">
+          Register everyone once, then pick from them for each game. Tap a player to see their profile, or the camera to change their photo.
         </p>
-        <div className="card team-body">
-          {!players.length ? (
-            <p className="muted" style={{ margin: 0 }}>No players yet. Tap &quot;+ Register Player&quot; to add your first.</p>
-          ) : (
-            <div className="player-grid">
-              {players.map((p) => (
-                <PlayerCard key={p.id} player={p} church={church} scope="church" onEdit={() => setModal({ kind: "player", player: p })} />
-              ))}
-            </div>
-          )}
-        </div>
+        <p className="muted intro">
+          Team sheets: {Object.values(FORMATS).map((r) => `${r.label} ${r.starters} + ${r.maxSubs}`).join(", ")}.
+        </p>
+        {!players.length ? (
+          <div className="empty">
+            <p className="state-title">No players yet</p>
+            <p className="muted">Register your first player to start picking team sheets.</p>
+          </div>
+        ) : (
+          <ul className="player-grid">
+            {players.map((p) => (
+              <li key={p.id}>
+                <PlayerCard player={p} church={church} scope="church" onEdit={() => setModal({ kind: "player", player: p })} />
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {played.length > 0 && (
-        <section>
-          <div className="section-head"><h2>Played</h2></div>
-          <div className="card">
+        <section className="block" aria-labelledby="played-head">
+          <div className="section-head"><h2 id="played-head">Played</h2></div>
+          <ul className="fixtures">
             {played.map((f) => {
               const mine = f.churchAId === churchId;
               const opponent = churchById(mine ? f.churchBId : f.churchAId);
               const [us, them] = mine ? [f.scoreA, f.scoreB] : [f.scoreB, f.scoreA];
               const result = f.outcome === "draw" ? "D" : (f.outcome === "A") === mine ? "W" : "L";
+              const resultWord = { W: "Won", D: "Drew", L: "Lost" }[result];
               return (
-                <div key={f.id} className="fixture">
+                <li key={f.id} className="fixture">
+                  <div className="fx-when">
+                    <span className="fx-game">{gameById(f.gameId)?.name ?? "No game set"}</span>
+                    {f.round && <span className="muted">{f.round}</span>}
+                  </div>
                   <div className="fx-teams">
-                    <span className={"result-badge r-" + result}>{result}</span>
-                    <span className="fx-score">{us} – {them}</span>
-                    <span className="fx-vs">vs</span>
-                    {opponent && <ChurchChip church={opponent} />}
+                    <div className="fx-side">
+                      <span className={"result-badge r-" + result} aria-label={resultWord}>{result}</span>
+                      <span className="fx-score">{us}:{them}</span>
+                      <span className="muted fx-vs">vs</span>
+                      {opponent && <ChurchChip church={opponent} />}
+                    </div>
                   </div>
-                  <div className="fx-meta"><span className="fx-game">{gameById(f.gameId)?.name ?? "—"}</span></div>
                   <div className="fx-actions">
-                    <button className="btn ghost sm" onClick={() => setModal({ kind: "lineups", fixture: f })}>Line-ups</button>
+                    <button type="button" className="btn ghost sm" onClick={() => setModal({ kind: "lineups", fixture: f })}>Line-ups</button>
                   </div>
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
         </section>
       )}
 

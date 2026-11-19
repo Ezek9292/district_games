@@ -65,9 +65,9 @@ export function TeamSheetModal({
 
   return (
     <Modal onClose={onClose} wide>
-      <h3>Team Sheet — {game.name}</h3>
+      <h3>Team Sheet: {game.name}</h3>
       <p className="muted">
-        vs {opponent?.name ?? "TBD"}{fixture.time && ` · ${fixture.time}`}{fixture.location && ` · ${fixture.location}`}
+        {[`vs ${opponent?.name ?? "TBD"}`, fixture.time, fixture.location].filter(Boolean).join(", ")}
       </p>
       <div className="sheet-counts">
         <span className={complete ? "ok" : ""}>
@@ -82,7 +82,7 @@ export function TeamSheetModal({
         <div className="empty">
           <p>
             None of your registered players can play this game
-            {game.eldersOnly ? " — register players as elders first." : ` — it's for ${game.division} only.`}
+            {game.eldersOnly ? ". Register players as elders first." : `. It's for ${game.division} only.`}
           </p>
         </div>
       ) : (
@@ -94,10 +94,10 @@ export function TeamSheetModal({
                 {p.name}
                 {p.number && <span className="muted"> #{p.number}</span>}
               </span>
-              <button className={"scorebtn" + (picks[p.id] === "starter" ? " active" : "")} onClick={() => toggle(p.id, "starter")}>
+              <button type="button" aria-pressed={picks[p.id] === "starter"} className={"scorebtn" + (picks[p.id] === "starter" ? " active" : "")} onClick={() => toggle(p.id, "starter")}>
                 {game.format === "penalties" ? "Kicker" : "Start"}
               </button>
-              <button className={"scorebtn" + (picks[p.id] === "sub" ? " active" : "")} onClick={() => toggle(p.id, "sub")}>
+              <button type="button" aria-pressed={picks[p.id] === "sub"} className={"scorebtn" + (picks[p.id] === "sub" ? " active" : "")} onClick={() => toggle(p.id, "sub")}>
                 {game.format === "penalties" ? "Reserve" : "Sub"}
               </button>
             </div>
@@ -105,14 +105,14 @@ export function TeamSheetModal({
         </div>
       )}
       {ineligibleCount > 0 && (
-        <p className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>
+        <p className="muted hint gap-top">
           {ineligibleCount} of your players {ineligibleCount === 1 ? "isn't" : "aren't"} eligible for this game and {ineligibleCount === 1 ? "is" : "are"} hidden.
         </p>
       )}
 
       <div className="modal-actions">
-        <button className="btn ghost" onClick={onClose}>Cancel</button>
-        <button className="btn accent" onClick={save} disabled={busy || !complete}>
+        <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn accent" onClick={save} disabled={busy || !complete}>
           {complete ? "Save team sheet" : `Pick ${rules.starters - starters.length} more`}
         </button>
       </div>

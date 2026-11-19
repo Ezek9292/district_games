@@ -88,8 +88,8 @@ export function PlayerModal({
         />
       </div>
       <div className="modal-actions">
-        <button className="btn ghost" onClick={onClose}>Cancel</button>
-        <button className="btn accent" onClick={save} disabled={busy}>{busy ? "Saving…" : player ? "Save" : "Register"}</button>
+        <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn accent" onClick={save} disabled={busy}>{busy ? "Saving…" : player ? "Save" : "Register"}</button>
       </div>
     </Modal>
   );

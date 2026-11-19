@@ -1,0 +1,52 @@
+:root {
+  color-scheme: light;
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
+  --text-xs: 0.75rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.2rem; --text-xl: 1.44rem; --text-2xl: 1.728rem; --text-3xl: 2.074rem;
+  --text-display-s: 1.44rem; --text-display: 1.728rem; --text-section: 1.2rem; --text-title: 1rem; --text-lead: 1rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
+  --color-error: oklch(52% 0.19 27); --color-success: oklch(50% 0.12 150);
+  --container: 1440px; --gutter: 64px; --gap-columns: 32px; --section-gap-s: 120px; --section-gap: 144px; --section-gap-l: 176px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+  --color-paper: oklch(98% 0.005 250); --color-paper-2: oklch(95% 0.006 250); --color-paper-3: oklch(91.5% 0.007 250);
+  --color-ink: oklch(16% 0.080 260); --color-ink-2: oklch(22% 0.060 258); --color-muted: oklch(50% 0.020 250);
+  --color-rule: oklch(78% 0.008 250); --color-rule-2: oklch(36% 0.060 255);
+  --color-accent: oklch(88% 0.200 120); --color-accent-ink: oklch(16% 0.080 260); --color-accent-deep: oklch(58% 0.145 125);
+  --color-focus: oklch(58% 0.145 125); --color-slot: oklch(76% 0.07 258);
+  --font-display: var(--nf-display), "Saira Condensed", "Arial Narrow", sans-serif;
+  --font-body: var(--nf-body), "Albert Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-outlier: var(--nf-mono), "JetBrains Mono", ui-monospace, monospace;
+  --radius-card: 4px; --radius-pill: 4px; --rule-hair: 1px; --rule-bar: 2px;
+  --shadow-card: none;
+  --tracking-display: -0.015em; --display-weight: 800;
+  /* App additions: the overlay behind dialogs, a soft error wash, the app control height. */
+  --color-scrim: oklch(16% 0.080 260 / 0.55);
+  --color-error-soft: oklch(95% 0.03 27);
+  --control-h: 40px;
+  /* A scoreboard reads across a narrower measure than a marketing page. */
+  --container: 72rem;
+}
+
+/* Dark mode, derived (never inverted): same hues, paper lifts by lightness, accent calmer. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-paper: oklch(16% 0.012 250); --color-paper-2: oklch(19% 0.013 250); --color-paper-3: oklch(22% 0.014 250);
+    --color-ink: oklch(94% 0.010 250); --color-ink-2: oklch(86% 0.012 250); --color-muted: oklch(72% 0.018 250);
+    --color-rule: oklch(32% 0.014 250); --color-rule-2: oklch(72% 0.040 255);
+    --color-accent: oklch(90% 0.170 120); --color-accent-ink: oklch(16% 0.080 260); --color-accent-deep: oklch(78% 0.140 125);
+    --color-focus: oklch(80% 0.150 125);
+    --color-error: oklch(72% 0.150 27); --color-error-soft: oklch(26% 0.050 27); --color-success: oklch(76% 0.120 150);
+    --color-scrim: oklch(8% 0.020 260 / 0.7);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-paper: oklch(16% 0.012 250); --color-paper-2: oklch(19% 0.013 250); --color-paper-3: oklch(22% 0.014 250);
+  --color-ink: oklch(94% 0.010 250); --color-ink-2: oklch(86% 0.012 250); --color-muted: oklch(72% 0.018 250);
+  --color-rule: oklch(32% 0.014 250); --color-rule-2: oklch(72% 0.040 255);
+  --color-accent: oklch(90% 0.170 120); --color-accent-ink: oklch(16% 0.080 260); --color-accent-deep: oklch(78% 0.140 125);
+  --color-focus: oklch(80% 0.150 125);
+  --color-error: oklch(72% 0.150 27); --color-error-soft: oklch(26% 0.050 27); --color-success: oklch(76% 0.120 150);
+  --color-scrim: oklch(8% 0.020 260 / 0.7);
+}

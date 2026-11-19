@@ -8,7 +8,7 @@ import type { Division, Game, GameFormat } from "@/lib/types";
 import { Modal } from "../Modal";
 import { useToast } from "../Toast";
 
-/** Adds a game, or edits `game` — including the points it awards. */
+/** Adds a game, or edits `game`, including the points it awards. */
 export function GameModal({ game, onClose }: { game?: Game; onClose: () => void }) {
   const toast = useToast();
   const [name, setName] = useState(game?.name ?? "");
@@ -62,16 +62,16 @@ export function GameModal({ game, onClose }: { game?: Game; onClose: () => void 
         <input type="checkbox" checked={eldersOnly} onChange={(e) => setEldersOnly(e.target.checked)} />
         <span>Elders only</span>
       </label>
-      <p className="muted" style={{ fontSize: 12.5 }}>
+      <p className="muted hint">
         Team sheet: {rules.starters} {format === "penalties" ? "kickers" : "starters"} + up to {rules.maxSubs} {format === "penalties" ? "reserves" : "substitutes"}.
       </p>
       {rulesChanged && (
-        <p className="muted" style={{ fontSize: 12.5, color: "var(--danger)" }}>
+        <p className="hint error" role="alert">
           Changing these resets team sheets already submitted for this game&apos;s upcoming fixtures.
         </p>
       )}
 
-      <div className="field-label" style={{ marginTop: 6 }}>Points awarded</div>
+      <div className="field-label gap-top">Points awarded</div>
       <div className="field-row">
         <div className="field">
           <label className="field-label">Win</label>
@@ -93,8 +93,8 @@ export function GameModal({ game, onClose }: { game?: Game; onClose: () => void 
         <textarea rows={2} placeholder="Rules, venue, duration…" value={description} onChange={(e) => setDescription(e.target.value)} />
       </div>
       <div className="modal-actions">
-        <button className="btn ghost" onClick={onClose}>Cancel</button>
-        <button className="btn accent" onClick={save}>{game ? "Save" : "Add"}</button>
+        <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn accent" onClick={save}>{game ? "Save" : "Add"}</button>
       </div>
     </Modal>
   );
