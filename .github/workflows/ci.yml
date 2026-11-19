@@ -80,6 +80,10 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null || { echo "::error::SSH_PRIVATE_KEY is not a valid private key"; exit 1; }
+          # Public facts only, so a wrong key or user is easy to spot in the log.
+          echo "Loaded key: $(ssh-keygen -lf ~/.ssh/deploy_key)"
+          # GitHub hides secret values in the log, so compare instead of printing.
+          [ "$SSH_USER" = deploy ] || echo "::warning::SSH_USER is not 'deploy'; the server only lets GitHub Actions in as deploy"
           ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
 
       - name: Pull, build and restart
