@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { gameSummary, pointsSummary } from "@/lib/formats";
 import { errMessage } from "@/lib/utils";
 import type { Church, ChurchRepEmail, Game, Player } from "@/lib/types";
+import { useUrlParam } from "@/hooks/useUrlParam";
 import { Icon } from "./Icon";
 import { PlayerCard } from "./PlayerCard";
 import { useToast } from "./Toast";
@@ -25,6 +26,10 @@ type Props = {
 
 export function Teams({ churches, games, playersByChurch, organizerUnlocked, churchEmails, ...props }: Props) {
   const toast = useToast();
+  // One church at a time, picked from a row of buttons, so no one scrolls past a whole roster
+  // to reach the next church. The choice stays in the URL; the first church is the default.
+  const [churchParam, setChurchParam] = useUrlParam("church", "");
+  const selected = churches.find((c) => c.id === churchParam) ?? churches[0];
 
   function remove(what: string, path: string) {
     if (confirm(what)) api(path, { method: "DELETE" }).catch((e) => toast(errMessage(e)));
@@ -49,7 +54,26 @@ export function Teams({ churches, games, playersByChurch, organizerUnlocked, chu
           </p>
         </div>
       ) : (
-        churches.map((c) => {
+        <>
+        {churches.length > 1 && (
+          <fieldset className="seg">
+            <legend className="visually-hidden">Show the team of</legend>
+            {churches.map((c) => (
+              <span key={c.id}>
+                <input
+                  type="radio" name="team-view" id={`church-${c.id}`} value={c.id}
+                  checked={selected?.id === c.id} onChange={() => setChurchParam(c.id)}
+                />
+                <label htmlFor={`church-${c.id}`}>
+                  <span className="swatch" style={{ background: c.color }} aria-hidden="true" />
+                  {c.name}
+                  <span className="seg-count">{(playersByChurch[c.id] ?? []).length}</span>
+                </label>
+              </span>
+            ))}
+          </fieldset>
+        )}
+        {churches.filter((c) => c.id === selected?.id).map((c) => {
           const players = playersByChurch[c.id] ?? [];
           const reps = churchEmails[c.id] ?? [];
           return (
@@ -102,7 +126,8 @@ export function Teams({ churches, games, playersByChurch, organizerUnlocked, chu
               )}
             </article>
           );
-        })
+        })}
+        </>
       )}
 
       <div className="section-head sub">

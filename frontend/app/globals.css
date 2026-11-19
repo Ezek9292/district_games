@@ -5,6 +5,7 @@
 /* Hallmark · dropped .pennants · the church-colour strip above the header was ornament; every church keeps its colour as a swatch beside its name */
 /* Hallmark · dropped per-game standings headings shown all at once · six stacked tables became one table with each game a tap away in the switcher, kept in the URL */
 /* Hallmark · reworded "Win 3 · Draw 1 · Loss 0" to "Win 3, draw 1, loss 0" · 63 names the middle-dot string */
+/* Hallmark · waive 39b · player photo and name buttons on the roster, not form controls · a player's photo tile is how people find a teammate, so the whole tile opens the profile */
 /* Hallmark · dismissed 28a · headshots load on the Teams tab, never on the first screen, where the standings sheet is the largest paint */
 @import url("./tokens.css");
 @import url("./base.css");
@@ -106,7 +107,8 @@ input[type="file"]::file-selector-button { margin-right: var(--space-sm); paddin
 .check input { margin-top: var(--space-3xs); }
 
 /* A choice between a few: the game switcher. Radios stay in the flow at one pixel. */
-.seg { display: flex; gap: var(--space-xs); min-width: 0; max-width: 100%; margin: 0 0 var(--space-lg); padding: 0 0 var(--space-2xs); border: 0; overflow-x: auto; scrollbar-width: thin; }
+/* Wraps rather than scrolling sideways, so every choice is in view on a phone. */
+.seg { display: flex; flex-wrap: wrap; gap: var(--space-xs); min-width: 0; max-width: 100%; margin: 0 0 var(--space-lg); padding: 0; border: 0; }
 .seg > span { flex: none; position: relative; }
 .seg input { position: absolute; width: 1px; height: 1px; min-height: 0; opacity: 0; }
 .seg label { display: inline-flex; align-items: center; min-height: var(--control-h); padding: 0 var(--space-md); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-card); font-size: var(--text-sm); font-weight: 500; white-space: nowrap; cursor: pointer; transition: background-color var(--dur-short) var(--ease-out); }
@@ -114,6 +116,10 @@ input[type="file"]::file-selector-button { margin-right: var(--space-sm); paddin
 .seg label:active { background: var(--color-paper-3); }
 .seg input:checked + label { background: var(--color-ink); border-color: var(--color-ink); color: var(--color-paper); }
 .seg input:focus-visible + label { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+.seg label .swatch { margin-right: var(--space-xs); }
+.seg-count { margin-left: var(--space-xs); color: var(--color-muted); font-family: var(--font-outlier); font-variant-numeric: tabular-nums; }
+.seg input:checked + label .seg-count { color: inherit; }
+.seg + .team { border-top: 0; padding-top: 0; }
 
 /* ---------- The standings sheet (signature) ---------- */
 .sheet-scroll { overflow-x: auto; }
@@ -136,7 +142,7 @@ input[type="file"]::file-selector-button { margin-right: var(--space-sm); paddin
 
 /* ---------- Schedule and fixture lists ---------- */
 .round { margin-bottom: var(--space-xl); }
-.round-head { padding-bottom: var(--space-xs); font-size: var(--text-lg); text-transform: uppercase; border-bottom: var(--rule-bar) solid var(--color-rule-2); }
+.round-head { max-width: none; padding-bottom: var(--space-xs); font-size: var(--text-lg); text-transform: uppercase; border-bottom: var(--rule-bar) solid var(--color-rule-2); }
 .fixtures { margin: 0; padding: 0; list-style: none; border-bottom: var(--rule-bar) solid var(--color-rule-2); }
 .block .fixtures { border-top: var(--rule-bar) solid var(--color-rule-2); }
 .fixture { display: grid; grid-template-columns: 11rem minmax(0, 1fr) auto; align-items: center; gap: var(--space-sm) var(--space-lg); padding-block: var(--space-md); }
