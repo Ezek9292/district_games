@@ -75,6 +75,13 @@ jobs:
           for v in SSH_HOST SSH_USER SSH_PRIVATE_KEY APP_DIR; do
             [ -n "${!v}" ] || { echo "::error::Repository secret $v is not set (see DEPLOY.md)"; exit 1; }
           done
+          # Pasted secrets often carry a trailing space or line break, which breaks the login.
+          # Trim them once and use the DEPLOY_* copies from here on.
+          trim() { printf '%s' "$1" | tr -d '\r\n' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
+          DEPLOY_HOST="$(trim "$SSH_HOST")"; DEPLOY_USER="$(trim "$SSH_USER")"
+          DEPLOY_PORT="$(trim "$SSH_PORT")"; DEPLOY_DIR="$(trim "$APP_DIR")"
+          { echo "DEPLOY_HOST=$DEPLOY_HOST"; echo "DEPLOY_USER=$DEPLOY_USER"; echo "DEPLOY_PORT=$DEPLOY_PORT"; echo "DEPLOY_DIR=$DEPLOY_DIR"; } >> "$GITHUB_ENV"
+
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           # Strip Windows line endings and make sure the key ends with a newline.
           printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/deploy_key
@@ -83,10 +90,11 @@ jobs:
           # Public facts only, so a wrong key or user is easy to spot in the log.
           echo "Loaded key: $(ssh-keygen -lf ~/.ssh/deploy_key)"
           # GitHub hides secret values in the log, so compare instead of printing.
-          [ "$SSH_USER" = deploy ] || echo "::warning::SSH_USER is not 'deploy'; the server only lets GitHub Actions in as deploy"
-          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          [ "$SSH_USER" = "$DEPLOY_USER" ] || echo "::notice::SSH_USER had spaces or line breaks around it; they were removed"
+          [ "$DEPLOY_USER" = deploy ] || echo "::warning::SSH_USER is not 'deploy'; the server only lets GitHub Actions in as deploy"
+          ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
 
       - name: Pull, build and restart
         run: |
-          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o IdentitiesOnly=yes -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
-            "set -e; cd '$APP_DIR'; git fetch origin main; git checkout -q main; git merge --ff-only origin/main; bash deploy.sh"
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o IdentitiesOnly=yes -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+            "set -e; cd '$DEPLOY_DIR'; git fetch origin main; git checkout -q main; git merge --ff-only origin/main; bash deploy.sh"
