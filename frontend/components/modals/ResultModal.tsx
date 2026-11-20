@@ -23,16 +23,24 @@ export function ResultModal({
   const [scoreB, setScoreB] = useState(fixture.scoreB?.toString() ?? "");
   const [scoreNote, setScoreNote] = useState(fixture.scoreNote);
   const [busy, setBusy] = useState(false);
+  const knockout = fixture.stage === "semi" || fixture.stage === "final";
+  const [winner, setWinner] = useState<"A" | "B" | "">(
+    knockout && fixture.scoreA !== null && fixture.scoreA === fixture.scoreB && (fixture.outcome === "A" || fixture.outcome === "B") ? fixture.outcome : ""
+  );
 
   const scoreLabel = game ? FORMATS[game.format].scoreLabel : "Score";
   const a = Number(scoreA), b = Number(scoreB);
   const filled = scoreA !== "" && scoreB !== "";
   const nameA = churchA?.name ?? "Church A", nameB = churchB?.name ?? "Church B";
 
+  const levelKnockout = knockout && filled && a === b;
   let preview = "";
-  if (filled && game) {
+  if (filled && game && knockout) {
+    const w = a > b ? nameA : b > a ? nameB : winner === "A" ? nameA : winner === "B" ? nameB : "";
+    preview = w ? `${w} goes through.` : "Level score: pick who went through.";
+  } else if (filled && game) {
     if (a === b) {
-      preview = game.format === "football"
+      preview = FORMATS[game.format].draws
         ? `Draw: both get ${game.pointsDraw} pt${game.pointsDraw === 1 ? "" : "s"}`
         : `${game.name} can't end in a draw.`;
     } else {
@@ -46,7 +54,7 @@ export function ResultModal({
     try {
       const body = clear
         ? { scoreA: null, scoreB: null, scoreNote }
-        : { scoreA: a, scoreB: b, scoreNote };
+        : { scoreA: a, scoreB: b, scoreNote, ...(levelKnockout && winner ? { winner } : {}) };
       await api(`/api/fixtures/${fixture.id}/result`, { method: "PUT", body });
       toast(clear ? "Result cleared." : "Result saved.");
       onClose();
@@ -56,7 +64,7 @@ export function ResultModal({
 
   return (
     <Modal onClose={onClose}>
-      <h3>Enter Result</h3>
+      <h3>Enter Result{knockout && <>: {fixture.stage === "final" ? "Final" : `Semi-final ${fixture.slot ?? ""}`}</>}</h3>
       <p className="muted">
         {game?.name ?? "Game"}{game && <>. {pointsSummary(game)}.</>}
       </p>
@@ -73,17 +81,30 @@ export function ResultModal({
       <div className="field">
         <label className="field-label">Note (optional)</label>
         <input
-          placeholder={game?.format === "volleyball" ? "e.g. 25-21, 22-25, 15-12" : "e.g. Won after extra time"}
+          placeholder={game?.format === "volleyball" ? "e.g. 25-21, 22-25, 15-12" : game?.format === "tableTennis" ? "e.g. 11-7, 9-11, 11-5" : "e.g. Won after extra time"}
           maxLength={40} value={scoreNote} onChange={(e) => setScoreNote(e.target.value)}
         />
       </div>
+      {levelKnockout && (
+        <fieldset className="field">
+          <legend className="field-label">Who went through? (e.g. on penalties)</legend>
+          <div className="entry-picks">
+            {(["A", "B"] as const).map((side) => (
+              <label key={side} className="check">
+                <input type="radio" name="ko-winner" checked={winner === side} onChange={() => setWinner(side)} />
+                <span>{side === "A" ? nameA : nameB}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
       {preview && <p className="result-preview">{preview}</p>}
       <div className="modal-actions">
         {fixture.status === "final" && (
           <button type="button" className="btn danger" onClick={() => save(true)} disabled={busy}>Clear result</button>
         )}
         <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
-        <button type="button" className="btn accent" onClick={() => save()} disabled={busy || !filled}>Save result</button>
+        <button type="button" className="btn accent" onClick={() => save()} disabled={busy || !filled || (levelKnockout && !winner)}>Save result</button>
       </div>
     </Modal>
   );

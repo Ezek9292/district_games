@@ -36,10 +36,38 @@ export function checkTeamSheet(game: GameRules, starters: string[], subs: string
   }
 }
 
-/** Who won a final score. Only football can end in a draw. */
-export function resultOutcome(game: Pick<Game, "name" | "format"> | null, scoreA: number, scoreB: number): Outcome {
-  if (scoreA === scoreB && game && game.format !== "football") {
+/**
+ * Who won a final score. Only football and draughts can end in a draw, and never in a knockout match:
+ * a level knockout score (e.g. decided on penalties) needs `winner`.
+ */
+export function resultOutcome(
+  game: Pick<Game, "name" | "format"> | null, scoreA: number, scoreB: number,
+  { knockout = false, winner }: { knockout?: boolean; winner?: "A" | "B" } = {}
+): Outcome {
+  if (scoreA !== scoreB) return scoreA > scoreB ? "A" : "B";
+  if (knockout) {
+    if (!winner) throw new HttpError(400, "A knockout match needs a winner. Pick who went through (e.g. on penalties).");
+    return winner;
+  }
+  if (game && !FORMATS[game.format].draws) {
     throw new HttpError(400, `${game.name} can't end in a draw. Enter the deciding score.`);
   }
-  return scoreA > scoreB ? "A" : scoreB > scoreA ? "B" : "draw";
+  return "draw";
+}
+
+/**
+ * Checks the finishing places of an all-church event. `places` maps each entered church to
+ * its place (1 = first), or null if it didn't finish. Ties share a place, so 1, 1, 3 is fine,
+ * but a place can't be higher than the number of churches entered.
+ */
+export function checkPlaces(entered: string[], places: Record<string, number | null>) {
+  const extra = Object.keys(places).find((id) => !entered.includes(id));
+  if (extra) throw new HttpError(400, "Only churches entered in this event can be placed.");
+  const given = entered.map((id) => places[id] ?? null);
+  if (!given.some((p) => p !== null)) throw new HttpError(400, "Enter at least one church's place.");
+  for (const p of given) {
+    if (p !== null && (!Number.isInteger(p) || p < 1 || p > entered.length)) {
+      throw new HttpError(400, `Places run from 1 to ${entered.length}.`);
+    }
+  }
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { DEFAULT_EVENT_NAME, errMessage } from "@/lib/utils";
+import { DEFAULT_EVENT_NAME, errMessage, isPending } from "@/lib/utils";
 import type { Church, ChurchRepEmail, Fixture, Game, Player } from "@/lib/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
 import { useUrlParam } from "@/hooks/useUrlParam";
@@ -20,7 +20,10 @@ import { ChurchModal } from "./modals/ChurchModal";
 import { PlayerModal } from "./modals/PlayerModal";
 import { GameModal } from "./modals/GameModal";
 import { ResultModal } from "./modals/ResultModal";
+import { PlacesModal } from "./modals/PlacesModal";
+import { isRace } from "@/lib/formats";
 import { LineupsModal } from "./modals/LineupsModal";
+import { TournamentSetupModal } from "./modals/TournamentSetupModal";
 
 type Tab = "standings" | "schedule" | "teams";
 const TABS: Tab[] = ["standings", "schedule", "teams"];
@@ -35,12 +38,14 @@ type ModalState =
   | { kind: "lineups"; fixture: Fixture }
   | { kind: "church"; church?: Church }
   | { kind: "player"; churchId: string; player?: Player }
-  | { kind: "game"; game?: Game };
+  | { kind: "game"; game?: Game }
+  | { kind: "tournament"; game: Game };
 
 export default function Tournament() {
   const toast = useToast();
   const { organizer, church: signedInChurch } = useAuth();
   const isOrganizer = !!organizer;
+  const isSuper = !!organizer?.isSuper;
   const { state, error, playersByChurch } = useTournamentData();
 
   const [tabParam, setTabParam] = useUrlParam("tab", "standings");
@@ -75,8 +80,8 @@ export default function Tournament() {
   }
 
   function openFixtureModal(fixture: Fixture | null) {
-    if (!churches.length || !games.length) {
-      toast("Add at least one church and one game first.");
+    if (churches.length < 2 || !games.length) {
+      toast("Add at least two churches and one game first.");
       return;
     }
     setModal({ kind: "fixture", fixture });
@@ -146,11 +151,30 @@ export default function Tournament() {
           )
         ) : (
           <>
+            {isOrganizer && fixtures.some(isPending) && (
+              <div className="pending-banner" role="status">
+                <Icon name="alert" size={20} />
+                <p>
+                  {(() => {
+                    const n = fixtures.filter(isPending).length;
+                    const what = n === 1 ? "1 result is" : `${n} results are`;
+                    const it = n === 1 ? "It doesn't" : "They don't";
+                    return isSuper
+                      ? `${what} waiting for your approval. ${it} show publicly or count until you approve.`
+                      : `${what} waiting for the super organizer's approval. ${it} show publicly until then.`;
+                  })()}
+                </p>
+                {isSuper && tab !== "schedule" && (
+                  <button type="button" className="btn sm accent" onClick={() => setTab("schedule")}>Review</button>
+                )}
+              </div>
+            )}
             {tab === "standings" && <Standings churches={churches} games={games} fixtures={fixtures} />}
             {tab === "schedule" && (
               <Schedule
                 churches={churches} games={games} fixtures={fixtures}
                 organizerUnlocked={isOrganizer}
+                isSuper={isSuper}
                 onAdd={() => openFixtureModal(null)}
                 onEdit={(f) => openFixtureModal(f)}
                 onResult={(f) => setModal({ kind: "result", fixture: f })}
@@ -166,13 +190,14 @@ export default function Tournament() {
                 onEditChurch={(church) => setModal({ kind: "church", church })}
                 onAddGame={() => setModal({ kind: "game" })}
                 onEditGame={(game) => setModal({ kind: "game", game })}
+                onSetupTournament={(game) => setModal({ kind: "tournament", game })}
                 onAddPlayer={(churchId) => setModal({ kind: "player", churchId })}
                 onEditPlayer={(player) => setModal({ kind: "player", churchId: player.churchId, player })}
               />
             )}
           </>
         )}
-        <footer className="note">Live scoreboard. Results appear here as soon as they are saved.</footer>
+        <footer className="note">Live scoreboard. Results appear here as soon as they are confirmed.</footer>
       </main>
 
       {modal?.kind === "login" && <LoginModal onClose={closeModal} />}
@@ -187,10 +212,14 @@ export default function Tournament() {
       {isOrganizer && modal?.kind === "fixture" && (
         <FixtureModal fixture={modal.fixture} churches={churches} games={games} onClose={closeModal} />
       )}
-      {isOrganizer && modal?.kind === "result" && (
+      {isOrganizer && modal?.kind === "result" && isRace(gameById(modal.fixture.gameId)) && (
+        <PlacesModal fixture={modal.fixture} game={gameById(modal.fixture.gameId)} churches={churches} onClose={closeModal} />
+      )}
+      {isOrganizer && modal?.kind === "result" && !isRace(gameById(modal.fixture.gameId)) && (
         <ResultModal
           fixture={modal.fixture} game={gameById(modal.fixture.gameId)}
-          churchA={churchById(modal.fixture.churchAId)} churchB={churchById(modal.fixture.churchBId)}
+          churchA={modal.fixture.churchAId ? churchById(modal.fixture.churchAId) : undefined}
+          churchB={modal.fixture.churchBId ? churchById(modal.fixture.churchBId) : undefined}
           onClose={closeModal}
         />
       )}
@@ -200,7 +229,13 @@ export default function Tournament() {
       {isOrganizer && modal?.kind === "player" && (
         <PlayerModal churchId={modal.churchId} player={modal.player} scope="organizer" onClose={closeModal} />
       )}
-      {isOrganizer && modal?.kind === "game" && <GameModal game={modal.game} onClose={closeModal} />}
+      {isOrganizer && modal?.kind === "tournament" && (
+        <TournamentSetupModal
+          game={modal.game} churches={churches} fixtures={fixtures.filter((f) => f.gameId === modal.game.id)}
+          onDone={() => { closeModal(); setTab("schedule"); }} onClose={closeModal}
+        />
+      )}
+      {isOrganizer && modal?.kind === "game" && <GameModal game={modal.game} churchCount={churches.length} onClose={closeModal} />}
     </>
   );
 }

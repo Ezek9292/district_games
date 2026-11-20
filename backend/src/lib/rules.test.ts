@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { Game, Player } from "@prisma/client";
-import { checkTeamSheet, ineligibleReason, resultOutcome } from "./rules";
+import { checkPlaces, checkTeamSheet, ineligibleReason, resultOutcome } from "./rules";
 
 type G = Pick<Game, "name" | "format" | "division" | "eldersOnly">;
 type P = Pick<Player, "id" | "name" | "gender" | "isElder">;
@@ -73,4 +73,38 @@ test("result outcome; only football can be drawn", () => {
   assert.equal(resultOutcome(game({ format: "volleyball" }), 3, 1), "A");
   rejects(() => resultOutcome(game({ name: "Volleyball", format: "volleyball" }), 2, 2), /can't end in a draw/);
   rejects(() => resultOutcome(game({ name: "Penalties", format: "penalties" }), 4, 4), /can't end in a draw/);
+});
+
+test("draughts can be drawn, table tennis can't", () => {
+  assert.equal(resultOutcome(game({ format: "draughts" }), 1, 1), "draw");
+  rejects(() => resultOutcome(game({ name: "Table Tennis", format: "tableTennis" }), 2, 2), /can't end in a draw/);
+});
+
+test("one player plus one reserve for table tennis and all-church events", () => {
+  const p = squad(3);
+  for (const format of ["tableTennis", "draughts", "sprint", "sackRace", "limeSpoon", "ludo"] as const) {
+    const g = game({ name: format, format });
+    checkTeamSheet(g, ["p0"], ["p1"], p.slice(0, 2));
+    rejects(() => checkTeamSheet(g, ["p0", "p1"], [], p.slice(0, 2)), /exactly 1/);
+    rejects(() => checkTeamSheet(g, ["p0"], ["p1", "p2"], p), /at most 1/);
+  }
+});
+
+test("places for an all-church event", () => {
+  const entered = ["a", "b", "c"];
+  checkPlaces(entered, { a: 1, b: 2, c: 3 });
+  checkPlaces(entered, { a: 1, b: 1, c: 3 }); // tie for first
+  checkPlaces(entered, { a: 1, b: 2, c: null }); // c didn't finish
+  checkPlaces(entered, { a: 2 }); // places can come in one at a time
+  rejects(() => checkPlaces(entered, {}), /at least one/);
+  rejects(() => checkPlaces(entered, { a: null, b: null }), /at least one/);
+  rejects(() => checkPlaces(entered, { a: 4 }), /1 to 3/);
+  rejects(() => checkPlaces(entered, { a: 0 }), /1 to 3/);
+  rejects(() => checkPlaces(entered, { a: 1, z: 2 }), /Only churches entered/);
+});
+
+test("a level knockout score needs a winner", () => {
+  rejects(() => resultOutcome(game(), 1, 1, { knockout: true }), /needs a winner/);
+  assert.equal(resultOutcome(game(), 1, 1, { knockout: true, winner: "B" }), "B");
+  assert.equal(resultOutcome(game(), 2, 1, { knockout: true, winner: "B" }), "A"); // the score decides when it can
 });

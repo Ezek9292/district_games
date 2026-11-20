@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { api } from "@/lib/api";
-import { FORMATS, ineligibleReason, startersLabel, subsLabel } from "@/lib/formats";
+import { FORMATS, ineligibleReason, isRace, startersLabel, subsLabel } from "@/lib/formats";
 import { errMessage } from "@/lib/utils";
 import type { Church, Fixture, Game, Player, SheetRole, TeamSheet } from "@/lib/types";
 import { Modal } from "../Modal";
@@ -65,9 +65,9 @@ export function TeamSheetModal({
 
   return (
     <Modal onClose={onClose} wide>
-      <h3>Team Sheet: {game.name}</h3>
+      <h3>{rules.starters === 1 ? "Pick your player" : "Team Sheet"}: {game.name}</h3>
       <p className="muted">
-        {[`vs ${opponent?.name ?? "TBD"}`, fixture.time, fixture.location].filter(Boolean).join(", ")}
+        {[isRace(game) ? `All churches together (${fixture.entries?.length ?? 0} entered)` : `vs ${opponent?.name ?? "TBD"}`, fixture.time, fixture.location].filter(Boolean).join(", ")}
       </p>
       <div className="sheet-counts">
         <span className={complete ? "ok" : ""}>
@@ -95,10 +95,10 @@ export function TeamSheetModal({
                 {p.number && <span className="muted"> #{p.number}</span>}
               </span>
               <button type="button" aria-pressed={picks[p.id] === "starter"} className={"scorebtn" + (picks[p.id] === "starter" ? " active" : "")} onClick={() => toggle(p.id, "starter")}>
-                {game.format === "penalties" ? "Kicker" : "Start"}
+                {game.format === "penalties" ? "Kicker" : rules.starters === 1 ? "Player" : "Start"}
               </button>
               <button type="button" aria-pressed={picks[p.id] === "sub"} className={"scorebtn" + (picks[p.id] === "sub" ? " active" : "")} onClick={() => toggle(p.id, "sub")}>
-                {game.format === "penalties" ? "Reserve" : "Sub"}
+                {game.format === "penalties" || rules.maxSubs === 1 ? "Reserve" : "Sub"}
               </button>
             </div>
           ))}
@@ -113,7 +113,7 @@ export function TeamSheetModal({
       <div className="modal-actions">
         <button type="button" className="btn ghost" onClick={onClose}>Cancel</button>
         <button type="button" className="btn accent" onClick={save} disabled={busy || !complete}>
-          {complete ? "Save team sheet" : `Pick ${rules.starters - starters.length} more`}
+          {complete ? (rules.starters === 1 ? "Save" : "Save team sheet") : `Pick ${rules.starters - starters.length} more`}
         </button>
       </div>
     </Modal>

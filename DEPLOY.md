@@ -60,6 +60,10 @@ cp frontend/.env.local.example frontend/.env.local
 
 - `backend/.env`: the Supabase URLs, a fresh `JWT_SECRET`, `ORGANIZER_EMAILS`, SMTP and Cloudinary, plus
   `NODE_ENV=production` and `FRONTEND_ORIGIN=https://districtgames.edonkor.dev`.
+  - `ORGANIZER_EMAILS` lists the **super organizers** (emails or phone numbers): they approve the results
+    other organizers enter, and only they can add or remove organizers. Checked every time the API starts.
+  - For sign-in by phone, add `MNOTIFY_API_KEY` and `MNOTIFY_SENDER_ID` (a sender ID approved in mNotify,
+    at most 11 characters). Without them, phone sign-in answers "isn't set up yet" and email still works.
 - `frontend/.env.local`: `NEXT_PUBLIC_API_URL=https://districtgames-api.edonkor.dev`.
 
 These files stay on the server only; git ignores them and deploys never touch them.

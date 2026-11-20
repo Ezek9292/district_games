@@ -17,11 +17,15 @@ model Event {
 }
 
 model Organizer {
-  id          String    @id @default(cuid())
-  email       String    @unique
-  name        String?
-  createdAt   DateTime  @default(now())
-  lastLoginAt DateTime?
+  id             String    @id @default(cuid())
+  /// An email address or a phone number in +233... form. The column is still called "email".
+  login          String    @unique @map("email")
+  /// Approves scores entered by other organizers. Set from ORGANIZER_EMAILS at startup.
+  isSuper        Boolean   @default(false)
+  name           String?
+  createdAt      DateTime  @default(now())
+  lastLoginAt    DateTime?
+  resultsEntered Fixture[]
 }
 
 model OtpCode {
@@ -37,24 +41,26 @@ model OtpCode {
 }
 
 model Church {
-  id          String        @id @default(cuid())
+  id          String         @id @default(cuid())
   name        String
   color       String
   /// Church reps sign in with a code sent to any of these addresses.
   emails      ChurchEmail[]
   lastLoginAt DateTime?
-  order       Int           @default(0)
-  createdAt   DateTime      @default(now())
+  order       Int            @default(0)
+  createdAt   DateTime       @default(now())
   players     Player[]
-  fixturesA   Fixture[]     @relation("ChurchA")
-  fixturesB   Fixture[]     @relation("ChurchB")
+  fixturesA   Fixture[]      @relation("ChurchA")
+  fixturesB   Fixture[]      @relation("ChurchB")
+  entries     FixtureEntry[]
   teamSheets  TeamSheet[]
 }
 
-/// A rep address for a church. Unique across all churches, so one email can't sign in to two.
+/// A rep sign-in (email or phone) for a church. Unique across all churches, so one login can't sign in to two.
 model ChurchEmail {
   id          String    @id @default(cuid())
-  email       String    @unique
+  /// An email address or a phone number in +233... form. The column is still called "email".
+  login       String    @unique @map("email")
   churchId    String
   church      Church    @relation(fields: [churchId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
@@ -63,11 +69,18 @@ model ChurchEmail {
   @@index([churchId])
 }
 
-/// Decides team-sheet size: see FORMATS in src/lib/formats.ts.
+/// Decides team-sheet size and whether it's a two-church match or an all-church event:
+/// see FORMATS in src/lib/formats.ts.
 enum GameFormat {
   football
   volleyball
   penalties
+  tableTennis
+  draughts
+  sprint
+  sackRace
+  limeSpoon
+  ludo
 }
 
 enum Division {
@@ -77,19 +90,28 @@ enum Division {
 }
 
 model Game {
-  id          String     @id @default(cuid())
-  name        String
-  description String     @default("")
-  format      GameFormat @default(football)
-  division    Division   @default(open)
+  id           String     @id @default(cuid())
+  name         String
+  description  String     @default("")
+  format       GameFormat @default(football)
+  division     Division   @default(open)
   /// Only players marked as elders can be picked.
-  eldersOnly  Boolean    @default(false)
-  pointsWin   Int        @default(3)
-  pointsDraw  Int        @default(1)
-  pointsLoss  Int        @default(0)
-  order       Int        @default(0)
-  createdAt   DateTime   @default(now())
-  fixtures    Fixture[]
+  eldersOnly   Boolean    @default(false)
+  pointsWin    Int        @default(3)
+  pointsDraw   Int        @default(1)
+  pointsLoss   Int        @default(0)
+  /// All-church events: points for 1st, 2nd, 3rd... Lower places get 0.
+  pointsPlaces Int[]      @default([5, 3, 2, 1])
+  order        Int        @default(0)
+  createdAt    DateTime   @default(now())
+  fixtures     Fixture[]
+}
+
+/// Football and volleyball can be played as a tournament: groups, then semi-finals and a final.
+enum Stage {
+  group
+  semi
+  final
 }
 
 enum FixtureStatus {
@@ -104,25 +126,50 @@ enum Outcome {
 }
 
 model Fixture {
-  id         String        @id @default(cuid())
+  id          String         @id @default(cuid())
   /// Kept (as null) when its game is removed, like the original app.
-  gameId     String?
-  game       Game?         @relation(fields: [gameId], references: [id], onDelete: SetNull)
-  churchAId  String
-  churchA    Church        @relation("ChurchA", fields: [churchAId], references: [id], onDelete: Cascade)
-  churchBId  String
-  churchB    Church        @relation("ChurchB", fields: [churchBId], references: [id], onDelete: Cascade)
-  round      String        @default("Round 1")
-  time       String        @default("")
-  location   String        @default("")
-  scoreNote  String        @default("")
+  gameId      String?
+  game        Game?          @relation(fields: [gameId], references: [id], onDelete: SetNull)
+  /// The two sides of a match. Null for an all-church event, whose churches are in `entries`.
+  churchAId   String?
+  churchA     Church?        @relation("ChurchA", fields: [churchAId], references: [id], onDelete: Cascade)
+  churchBId   String?
+  churchB     Church?        @relation("ChurchB", fields: [churchBId], references: [id], onDelete: Cascade)
+  entries     FixtureEntry[]
+  round       String         @default("Round 1")
+  /// Tournament fixtures only. Null for an ordinary fixture.
+  stage       Stage?
+  /// Group stage: "A", "B"...
+  groupName   String?
+  /// Semi-finals: 1 = winner of group A vs runner-up of group B, 2 = winner of B vs runner-up of A.
+  slot        Int?
+  time        String         @default("")
+  location    String         @default("")
+  scoreNote   String         @default("")
   /// Goals for football and penalties, sets won for volleyball.
-  scoreA     Int?
-  scoreB     Int?
-  status     FixtureStatus @default(scheduled)
-  outcome    Outcome?
-  createdAt  DateTime      @default(now())
-  teamSheets TeamSheet[]
+  scoreA      Int?
+  scoreB      Int?
+  status      FixtureStatus  @default(scheduled)
+  outcome     Outcome?
+  /// A result entered by an ordinary organizer stays hidden until a super organizer approves it.
+  approvedAt  DateTime?
+  enteredById String?
+  enteredBy   Organizer?     @relation(fields: [enteredById], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now())
+  teamSheets  TeamSheet[]
+}
+
+/// A church taking part in an all-church event (100 m, sack race...), and where it finished.
+model FixtureEntry {
+  fixtureId String
+  fixture   Fixture @relation(fields: [fixtureId], references: [id], onDelete: Cascade)
+  churchId  String
+  church    Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  /// 1 = first. Ties share a place. Null until the result is in, or if the church didn't finish.
+  place     Int?
+
+  @@id([fixtureId, churchId])
+  @@index([churchId])
 }
 
 enum Gender {

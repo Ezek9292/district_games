@@ -4,6 +4,8 @@ import { z } from "zod";
 import { prisma } from "../prisma";
 import { HttpError } from "../lib/http";
 import { sendLoginCode } from "../lib/mailer";
+import { isPhoneLogin, parseLogin } from "../lib/login";
+import { sendSmsCode } from "../lib/sms";
 import { codesMatch, generateCode, hashCode, OTP_MAX_ATTEMPTS, OTP_RESEND_COOLDOWN_MS, OTP_TTL_MS } from "../lib/otp";
 import { findChurchSession, readToken, signToken, type Role } from "../middleware/auth";
 
@@ -20,35 +22,40 @@ const limiter = rateLimit({
   keyGenerator: clientIp,
 });
 
-const emailSchema = z.string().trim().toLowerCase().email("Enter a valid email address");
+/** The email or phone number being signed in with. Older clients send it as `email`. */
+const loginFrom = (body: any) => parseLogin(body?.login ?? body?.email);
 const roleSchema = z.enum(["organizer", "church"]).default("organizer");
 
-// Same response whether or not the email is registered, so the lists can't be probed.
-const GENERIC_SENT = { message: "If that email is registered, a 6-digit code is on its way." };
+// Same response whether or not the login is registered, so the lists can't be probed.
+const sentMessage = (login: string) => ({
+  message: isPhoneLogin(login)
+    ? "If that number is registered, a 6-digit code is on its way by SMS."
+    : "If that email is registered, a 6-digit code is on its way.",
+});
 
 /** Looks up who is signing in. */
-async function findAccount(role: Role, email: string) {
+async function findAccount(role: Role, login: string) {
   if (role === "church") {
-    const rep = await prisma.churchEmail.findUnique({ where: { email }, include: { church: true } });
-    return rep && { id: rep.church.id, email, name: rep.church.name };
+    const rep = await prisma.churchEmail.findUnique({ where: { login }, include: { church: true } });
+    return rep && { id: rep.church.id, name: rep.church.name };
   }
-  const organizer = await prisma.organizer.findUnique({ where: { email } });
-  return organizer && { id: organizer.id, email, name: organizer.name };
+  const organizer = await prisma.organizer.findUnique({ where: { login } });
+  return organizer && { id: organizer.id, name: organizer.name };
 }
 
-/** Codes are stored per role, so a church code can't sign in as an organizer with the same email. */
-const otpKey = (role: Role, email: string) => (role === "church" ? `church:${email}` : email);
+/** Codes are stored per role, so a church code can't sign in as an organizer with the same login. */
+const otpKey = (role: Role, login: string) => (role === "church" ? `church:${login}` : login);
 
 authRouter.post("/request-otp", limiter, async (req, res) => {
-  const email = emailSchema.parse(req.body?.email);
+  const login = loginFrom(req.body);
   const role = roleSchema.parse(req.body?.as);
-  const account = await findAccount(role, email);
+  const account = await findAccount(role, login);
   if (!account) {
-    res.json(GENERIC_SENT);
+    res.json(sentMessage(login));
     return;
   }
 
-  const key = otpKey(role, email);
+  const key = otpKey(role, login);
   const recent = await prisma.otpCode.findFirst({
     where: { email: key, createdAt: { gt: new Date(Date.now() - OTP_RESEND_COOLDOWN_MS) } },
   });
@@ -61,15 +68,17 @@ authRouter.post("/request-otp", limiter, async (req, res) => {
       data: { email: key, codeHash: hashCode(key, code), expiresAt: new Date(Date.now() + OTP_TTL_MS) },
     }),
   ]);
-  await sendLoginCode(email, code, role === "church" ? account.name ?? undefined : undefined);
-  res.json(GENERIC_SENT);
+  const churchName = role === "church" ? account.name ?? undefined : undefined;
+  if (isPhoneLogin(login)) await sendSmsCode(login, code, churchName);
+  else await sendLoginCode(login, code, churchName);
+  res.json(sentMessage(login));
 });
 
 authRouter.post("/verify-otp", limiter, async (req, res) => {
-  const email = emailSchema.parse(req.body?.email);
+  const login = loginFrom(req.body);
   const role = roleSchema.parse(req.body?.as);
   const code = z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code").parse(req.body?.code);
-  const key = otpKey(role, email);
+  const key = otpKey(role, login);
 
   const otp = await prisma.otpCode.findFirst({
     where: { email: key, consumedAt: null, expiresAt: { gt: new Date() } },
@@ -83,7 +92,7 @@ authRouter.post("/verify-otp", limiter, async (req, res) => {
     throw new HttpError(400, "That code doesn't match.");
   }
 
-  const account = await findAccount(role, email);
+  const account = await findAccount(role, login);
   if (!account) throw new HttpError(400, "That code has expired. Request a new one.");
 
   const now = new Date();
@@ -92,26 +101,26 @@ authRouter.post("/verify-otp", limiter, async (req, res) => {
     role === "church"
       ? prisma.church.update({
           where: { id: account.id },
-          data: { lastLoginAt: now, emails: { update: { where: { email }, data: { lastLoginAt: now } } } },
+          data: { lastLoginAt: now, emails: { update: { where: { login }, data: { lastLoginAt: now } } } },
         })
       : prisma.organizer.update({ where: { id: account.id }, data: { lastLoginAt: now } }),
   ]);
-  res.json({ token: signToken(role, account.id, email), ...(await sessionFor(role, account.id, email)) });
+  res.json({ token: signToken(role, account.id, login), ...(await sessionFor(role, account.id, login)) });
 });
 
 /** What the frontend needs to know about whoever is signed in. */
-async function sessionFor(role: Role, id: string, email: string) {
+async function sessionFor(role: Role, id: string, login: string) {
   if (role === "church") {
-    const church = await findChurchSession(id, email);
-    return { role, church: { id: church.id, name: church.name, color: church.color, email } };
+    const church = await findChurchSession(id, login);
+    return { role, church: { id: church.id, name: church.name, color: church.color, login } };
   }
   const organizer = await prisma.organizer.findUnique({ where: { id } });
   if (!organizer) throw new HttpError(401, "You are no longer an organizer.");
-  return { role, organizer: { id: organizer.id, email: organizer.email, name: organizer.name } };
+  return { role, organizer: { id: organizer.id, login: organizer.login, name: organizer.name, isSuper: organizer.isSuper } };
 }
 
 authRouter.get("/me", async (req, res) => {
   const token = readToken(req);
   if (!token) throw new HttpError(401, "Sign-in required");
-  res.json(await sessionFor(token.role, token.id, token.email));
+  res.json(await sessionFor(token.role, token.id, token.login));
 });

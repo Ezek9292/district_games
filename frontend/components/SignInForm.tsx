@@ -7,7 +7,7 @@ import type { Session } from "@/lib/types";
 import { useAuth } from "./Auth";
 import { useToast } from "./Toast";
 
-/** Email → 6-digit code sign-in, shared by organizers and church reps. */
+/** Email or phone number → 6-digit code sign-in, shared by organizers and church reps. */
 export function SignInForm({
   as, intro, onCancel, onSignedIn,
 }: {
@@ -18,16 +18,17 @@ export function SignInForm({
 }) {
   const toast = useToast();
   const { signIn } = useAuth();
-  const [step, setStep] = useState<"email" | "code">("email");
-  const [email, setEmail] = useState("");
+  const [step, setStep] = useState<"login" | "code">("login");
+  const [login, setLogin] = useState("");
+  const isPhone = !login.includes("@");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function requestCode() {
-    if (!email.trim()) { toast("Enter your email."); return; }
+    if (!login.trim()) { toast("Enter your email or phone number."); return; }
     setBusy(true);
     try {
-      const r = await api<{ message: string }>("/api/auth/request-otp", { method: "POST", body: { email, as } });
+      const r = await api<{ message: string }>("/api/auth/request-otp", { method: "POST", body: { login, as } });
       toast(r.message);
       setStep("code");
     } catch (e) { toast(errMessage(e)); }
@@ -38,7 +39,7 @@ export function SignInForm({
     setBusy(true);
     try {
       const { token, ...session } = await api<{ token: string } & Session>("/api/auth/verify-otp", {
-        method: "POST", body: { email, code, as },
+        method: "POST", body: { login, code, as },
       });
       signIn(token, session as Session);
       onSignedIn?.();
@@ -46,14 +47,15 @@ export function SignInForm({
     finally { setBusy(false); }
   }
 
-  return step === "email" ? (
+  return step === "login" ? (
     <>
       <p className="muted">{intro}</p>
       <div className="field">
-        <label className="field-label">Email</label>
+        <label className="field-label" htmlFor="signin-login">Email or phone number</label>
         <input
-          type="email" autoComplete="email" autoFocus value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          id="signin-login" type="text" autoComplete="username" autoCapitalize="none" spellCheck={false} autoFocus
+          placeholder="you@example.com or 024 123 4567" value={login}
+          onChange={(e) => setLogin(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") requestCode(); }}
         />
       </div>
@@ -64,7 +66,9 @@ export function SignInForm({
     </>
   ) : (
     <>
-      <p className="muted">Enter the code sent to <strong>{email}</strong>. It expires in 10 minutes.</p>
+      <p className="muted">
+        Enter the code sent {isPhone ? "by SMS " : ""}to <strong>{login}</strong>. It expires in 10 minutes.
+      </p>
       <div className="field">
         <input
           className="pin-display" inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus
@@ -74,7 +78,7 @@ export function SignInForm({
         />
       </div>
       <div className="modal-actions">
-        <button type="button" className="btn ghost" onClick={() => { setStep("email"); setCode(""); }}>Back</button>
+        <button type="button" className="btn ghost" onClick={() => { setStep("login"); setCode(""); }}>Back</button>
         <button type="button" className="btn ghost" onClick={requestCode} disabled={busy}>Resend</button>
         <button type="button" className="btn accent" onClick={verify} disabled={busy || code.length !== 6}>Sign in</button>
       </div>

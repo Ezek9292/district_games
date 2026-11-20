@@ -11,7 +11,7 @@ export function LoginModal({ onClose }: { onClose: () => void }) {
       <h3>Organizer Sign-in</h3>
       <SignInForm
         as="organizer"
-        intro="We'll email you a 6-digit code. Only registered organizers can sign in."
+        intro="Enter your email or phone number and we'll send you a 6-digit code. Only registered organizers can sign in."
         onCancel={onClose}
         onSignedIn={() => { onClose(); toast("Organizer mode on"); }}
       />

@@ -1,3 +1,4 @@
+import { placePoints } from "./formats.ts";
 import type { Church, Fixture, Game, Record3 } from "./types";
 
 export const DEFAULT_EVENT_NAME = "Taifa District of SDA";
@@ -14,19 +15,42 @@ export function luminanceTextColor(hex: string): string {
   return lum > 0.6 ? "#1E2A22" : "#F3F5EE";
 }
 
-/** Win/draw/loss, points from each game's rule, and score for/against. `gameId` null means every game. */
+export const emptyRecord = (): Record3 => ({ w: 0, d: 0, l: 0, pts: 0, gf: 0, ga: 0, ev: 0, p1: 0, p2: 0, p3: 0 });
+
+/** A result an ordinary organizer entered that a super organizer hasn't approved yet. */
+export const isPending = (f: Fixture) => f.status === "final" && !f.approvedAt;
+
+/**
+ * Each church's record from final, approved fixtures. `gameId` null means every game.
+ * Matches give win/draw/loss points from the game's rule; all-church events give points by place.
+ */
 export function computeRecords(
   churches: Church[], games: Game[], fixtures: Fixture[], gameId: string | null
 ): Record<string, Record3> {
   const rec: Record<string, Record3> = {};
-  churches.forEach((c) => (rec[c.id] = { w: 0, d: 0, l: 0, pts: 0, gf: 0, ga: 0 }));
+  churches.forEach((c) => (rec[c.id] = emptyRecord()));
   const gameById = new Map(games.map((g) => [g.id, g]));
   fixtures.forEach((f) => {
-    if (f.status !== "final" || !f.outcome) return;
+    if (f.status !== "final" || isPending(f)) return;
     if (gameId && f.gameId !== gameId) return;
+    const game = f.gameId ? gameById.get(f.gameId) : undefined;
+
+    if (f.entries?.length) {
+      for (const e of f.entries) {
+        const r = rec[e.churchId];
+        if (!r) continue;
+        r.ev++;
+        if (e.place === 1) r.p1++;
+        else if (e.place === 2) r.p2++;
+        else if (e.place === 3) r.p3++;
+        r.pts += placePoints(game, e.place);
+      }
+      return;
+    }
+
+    if (!f.outcome || !f.churchAId || !f.churchBId) return;
     const a = rec[f.churchAId];
     const b = rec[f.churchBId];
-    const game = f.gameId ? gameById.get(f.gameId) : undefined;
     if (!a || !b) return;
     const win = game?.pointsWin ?? 3, draw = game?.pointsDraw ?? 1, loss = game?.pointsLoss ?? 0;
     if (f.outcome === "A") { a.w++; b.l++; a.pts += win; b.pts += loss; }

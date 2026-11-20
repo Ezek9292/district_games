@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { fixtureChurchIds, isRace } from "@/lib/formats";
 import { errMessage } from "@/lib/utils";
 import type { Church, Fixture, Game, Player, TeamSheet } from "@/lib/types";
 import { Lineup } from "../Lineup";
@@ -40,13 +41,13 @@ export function LineupsModal({
 
   return (
     <Modal onClose={onClose} wide>
-      <h3>Line-ups: {game?.name ?? "Game"}</h3>
+      <h3>{isRace(game) ? "Competitors" : "Line-ups"}: {game?.name ?? "Game"}</h3>
       <p className="muted">{[fixture.round, fixture.time, fixture.location].filter(Boolean).join(", ")}</p>
       {!sheets ? (
         <p className="muted">Loading…</p>
       ) : (
         <div className="lineups">
-          {[fixture.churchAId, fixture.churchBId].map((id) => (
+          {fixtureChurchIds(fixture).map((id) => (
             <Lineup key={id} church={churchById(id)} game={game} sheet={sheetFor(id)} playerById={playerById} />
           ))}
         </div>

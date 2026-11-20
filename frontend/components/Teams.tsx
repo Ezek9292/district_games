@@ -1,7 +1,7 @@
 "use client";
 
 import { api } from "@/lib/api";
-import { gameSummary, pointsSummary } from "@/lib/formats";
+import { gameSummary, isRace, pointsSummary } from "@/lib/formats";
 import { errMessage } from "@/lib/utils";
 import type { Church, ChurchRepEmail, Game, Player } from "@/lib/types";
 import { useUrlParam } from "@/hooks/useUrlParam";
@@ -14,12 +14,13 @@ type Props = {
   games: Game[];
   playersByChurch: Record<string, Player[]>;
   organizerUnlocked: boolean;
-  /** Rep emails by church id; only loaded for organizers. */
+  /** Rep logins (emails or phone numbers) by church id; only loaded for organizers. */
   churchEmails: Record<string, ChurchRepEmail[]>;
   onAddChurch: () => void;
   onEditChurch: (c: Church) => void;
   onAddGame: () => void;
   onEditGame: (g: Game) => void;
+  onSetupTournament: (g: Game) => void;
   onAddPlayer: (churchId: string) => void;
   onEditPlayer: (p: Player) => void;
 };
@@ -97,8 +98,8 @@ export function Teams({ churches, games, playersByChurch, organizerUnlocked, chu
               {organizerUnlocked && (
                 <p className={"reps" + (reps.length ? "" : " warn")}>
                   {reps.length
-                    ? <>Reps: {reps.map((e) => e.email).join(", ")}</>
-                    : <>No rep email yet, so this church can&apos;t sign in. Add one under Edit church.</>}
+                    ? <>Reps: {reps.map((e) => e.login).join(", ")}</>
+                    : <>No rep email or phone number yet, so this church can&apos;t sign in. Add one under Edit church.</>}
                 </p>
               )}
               {!players.length && !organizerUnlocked ? (
@@ -148,6 +149,9 @@ export function Teams({ churches, games, playersByChurch, organizerUnlocked, chu
               </div>
               {organizerUnlocked && (
                 <div className="fx-actions">
+                  {!isRace(g) && (
+                    <button type="button" className="btn ghost sm" onClick={() => props.onSetupTournament(g)}>Set up tournament</button>
+                  )}
                   <button type="button" className="btn ghost sm" onClick={() => props.onEditGame(g)}>Edit / points</button>
                   <button
                     type="button" className="btn ghost sm danger"

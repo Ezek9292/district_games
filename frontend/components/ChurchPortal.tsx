@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import { FORMATS } from "@/lib/formats";
+import { FORMATS, fixtureChurchIds, isRace, ordinal, placePoints } from "@/lib/formats";
 import type { Fixture, Player, TeamSheet } from "@/lib/types";
 import { useTournamentData } from "@/hooks/useTournamentData";
 import { useAuth } from "./Auth";
@@ -52,7 +52,7 @@ export default function ChurchPortal() {
             <h2>Church sign-in</h2>
             <SignInForm
               as="church"
-              intro="Enter one of your church's registered rep emails and we'll send you a 6-digit code. Don't have one? Ask an organizer to add your email to your church."
+              intro="Enter your church's registered rep email or phone number and we'll send you a 6-digit code. Not registered? Ask an organizer to add your email or number to your church."
             />
           </div>
         ) : (
@@ -95,7 +95,12 @@ function SignedInPortal({ churchId }: { churchId: string }) {
   const players = playersByChurch[churchId] ?? [];
   const gameById = (id: string | null) => state.games.find((g) => g.id === id);
   const churchById = (id: string) => state.churches.find((c) => c.id === id);
-  const myFixtures = state.fixtures.filter((f) => f.churchAId === churchId || f.churchBId === churchId);
+  const myFixtures = state.fixtures.filter((f) => fixtureChurchIds(f).includes(churchId));
+  const opponentOf = (f: Fixture) => {
+    const id = f.churchAId === churchId ? f.churchBId : f.churchAId;
+    return id ? churchById(id) : undefined;
+  };
+  const playerName = (id: string | undefined) => players.find((p) => p.id === id)?.name ?? "";
   const upcoming = myFixtures.filter((f) => f.status === "scheduled");
   const played = myFixtures.filter((f) => f.status === "final");
   const sheetFor = (fixtureId: string) => sheets.find((s) => s.fixtureId === fixtureId);
@@ -120,10 +125,13 @@ function SignedInPortal({ churchId }: { churchId: string }) {
           <ul className="fixtures">
             {upcoming.map((f) => {
               const game = gameById(f.gameId);
-              const opponent = churchById(f.churchAId === churchId ? f.churchBId : f.churchAId);
+              const race = isRace(game);
+              const opponent = opponentOf(f);
               const sheet = sheetFor(f.id);
-              const starters = sheet?.players.filter((p) => p.role === "starter").length ?? 0;
+              const starterRows = sheet?.players.filter((p) => p.role === "starter") ?? [];
+              const starters = starterRows.length;
               const subs = sheet ? sheet.players.length - starters : 0;
+              const single = game ? FORMATS[game.format].starters === 1 : false;
               return (
                 <li key={f.id} className="fixture">
                   <div className="fx-when">
@@ -134,13 +142,21 @@ function SignedInPortal({ churchId }: { churchId: string }) {
                   </div>
                   <div className="fx-teams">
                     <div className="fx-side">
-                      <span className="muted fx-vs">vs</span>
-                      {opponent ? <ChurchChip church={opponent} /> : <span className="muted">To be decided</span>}
+                      {race ? (
+                        <span className="muted">All churches together: {f.entries.length} entered</span>
+                      ) : (
+                        <>
+                          <span className="muted fx-vs">vs</span>
+                          {opponent ? <ChurchChip church={opponent} /> : <span className="muted">To be decided</span>}
+                        </>
+                      )}
                     </div>
                     <p className={"fx-status" + (sheet ? " ok" : " todo")}>
                       {sheet
-                        ? <><Icon name="check" size={16} />Team sheet saved: {starters} starting, {subs} on the bench</>
-                        : "No team sheet yet"}
+                        ? <><Icon name="check" size={16} />{single
+                          ? <>Your player: {playerName(starterRows[0]?.playerId)}{subs ? ", plus a reserve" : ""}</>
+                          : <>Team sheet saved: {starters} starting, {subs} on the bench</>}</>
+                        : single ? "No player picked yet" : "No team sheet yet"}
                     </p>
                   </div>
                   <div className="fx-actions">
@@ -149,7 +165,7 @@ function SignedInPortal({ churchId }: { churchId: string }) {
                       className={"btn " + (sheet ? "" : "accent")}
                       onClick={() => game ? setModal({ kind: "sheet", fixture: f }) : toast("This fixture has no game yet.")}
                     >
-                      {sheet ? "Edit team sheet" : "Pick team"}
+                      {single ? (sheet ? "Change player" : "Pick player") : sheet ? "Edit team sheet" : "Pick team"}
                     </button>
                   </div>
                 </li>
@@ -168,7 +184,8 @@ function SignedInPortal({ churchId }: { churchId: string }) {
           Register everyone once, then pick from them for each game. Tap a player to see their profile, or the camera to change their photo.
         </p>
         <p className="muted intro">
-          Team sheets: {Object.values(FORMATS).map((r) => `${r.label} ${r.starters} + ${r.maxSubs}`).join(", ")}.
+          Team sizes: {Object.values(FORMATS).filter((r) => r.starters > 1).map((r) => `${r.label} ${r.starters} + ${r.maxSubs}`).join(", ")}.
+          Table tennis, draughts and the all-church events (100 metres, sack race, lime and spoon, ludo) take 1 player plus 1 reserve.
         </p>
         {!players.length ? (
           <div className="empty">
@@ -191,8 +208,29 @@ function SignedInPortal({ churchId }: { churchId: string }) {
           <div className="section-head"><h2 id="played-head">Played</h2></div>
           <ul className="fixtures">
             {played.map((f) => {
+              const game = gameById(f.gameId);
+              if (isRace(game) || f.entries.length) {
+                const place = f.entries.find((e) => e.churchId === churchId)?.place ?? null;
+                return (
+                  <li key={f.id} className="fixture">
+                    <div className="fx-when">
+                      <span className="fx-game">{game?.name ?? "No game set"}</span>
+                      {f.round && <span className="muted">{f.round}</span>}
+                    </div>
+                    <div className="fx-teams">
+                      <div className="fx-side">
+                        <span className={"place-badge" + (place && place <= 3 ? ` p${place}` : "")}>{place ? ordinal(place) : "DNF"}</span>
+                        <span className="muted">of {f.entries.length} churches, {placePoints(game, place)} {placePoints(game, place) === 1 ? "pt" : "pts"}</span>
+                      </div>
+                    </div>
+                    <div className="fx-actions">
+                      <button type="button" className="btn ghost sm" onClick={() => setModal({ kind: "lineups", fixture: f })}>Competitors</button>
+                    </div>
+                  </li>
+                );
+              }
               const mine = f.churchAId === churchId;
-              const opponent = churchById(mine ? f.churchBId : f.churchAId);
+              const opponent = opponentOf(f);
               const [us, them] = mine ? [f.scoreA, f.scoreB] : [f.scoreB, f.scoreA];
               const result = f.outcome === "draw" ? "D" : (f.outcome === "A") === mine ? "W" : "L";
               const resultWord = { W: "Won", D: "Drew", L: "Lost" }[result];
@@ -227,7 +265,7 @@ function SignedInPortal({ churchId }: { churchId: string }) {
         <TeamSheetModal
           fixture={modal.fixture}
           game={gameById(modal.fixture.gameId)!}
-          opponent={churchById(modal.fixture.churchAId === churchId ? modal.fixture.churchBId : modal.fixture.churchAId)}
+          opponent={opponentOf(modal.fixture)}
           players={players}
           sheet={sheetFor(modal.fixture.id)}
           onClose={closeModal}

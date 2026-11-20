@@ -14,6 +14,11 @@ const schema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   MAIL_FROM: z.string().default("Taifa District of SDA <no-reply@example.com>"),
+  // Login codes by SMS (mNotify). Without a key, phone sign-in is off in production.
+  MNOTIFY_API_KEY: z.string().optional(),
+  MNOTIFY_SENDER_ID: z.string().max(11, "MNOTIFY_SENDER_ID can be at most 11 characters").default("TaifaGames"),
+  // These organizers (emails or phone numbers, comma-separated) are made super organizers at startup.
+  ORGANIZER_EMAILS: z.string().default(""),
   // Player photos. Either the single CLOUDINARY_URL from the Cloudinary dashboard
   // (cloudinary://API_KEY:API_SECRET@CLOUD_NAME) or the three separate values.
   CLOUDINARY_URL: z.string().optional(),

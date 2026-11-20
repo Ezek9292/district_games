@@ -59,10 +59,12 @@ export async function saveTeamSheet(fixtureId: string, churchId: string, body: u
 
   const ids = [...starters, ...subs];
   const [fixture, players] = await Promise.all([
-    prisma.fixture.findUnique({ where: { id: fixtureId }, include: { game: true } }),
+    prisma.fixture.findUnique({ where: { id: fixtureId }, include: { game: true, entries: { select: { churchId: true } } } }),
     prisma.player.findMany({ where: { id: { in: ids }, churchId } }),
   ]);
-  if (!fixture || (fixture.churchAId !== churchId && fixture.churchBId !== churchId)) {
+  const takesPart = fixture
+    && (fixture.churchAId === churchId || fixture.churchBId === churchId || fixture.entries.some((e) => e.churchId === churchId));
+  if (!fixture || !takesPart) {
     throw new HttpError(404, "Fixture not found");
   }
   if (fixture.status === "final") throw new HttpError(400, "This game has been played; its team sheet is locked.");

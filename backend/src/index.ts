@@ -4,6 +4,7 @@ import helmet from "helmet";
 import { allowedOrigins, env } from "./env";
 import { prisma } from "./prisma";
 import { errorHandler } from "./lib/http";
+import { normalizeLogin } from "./lib/login";
 import { authRouter } from "./routes/auth";
 import { publicRouter } from "./routes/public";
 import { adminRouter } from "./routes/admin";
@@ -35,4 +36,21 @@ app.use(errorHandler);
 
 app.listen(env.PORT, env.HOST, () => {
   console.log(`API listening on http://${env.HOST}:${env.PORT} ✅`);
+  syncSuperOrganizers().catch((err) => console.error("Couldn't set the super organizers:", err));
 });
+
+/**
+ * The organizers in ORGANIZER_EMAILS (emails or phone numbers) are super organizers: they approve
+ * results the other organizers enter. If none is listed or found, the earliest organizer is made super,
+ * so results can always be approved.
+ */
+async function syncSuperOrganizers() {
+  const logins = env.ORGANIZER_EMAILS.split(",").map((v) => normalizeLogin(v)).filter((v): v is string => !!v);
+  for (const login of logins) {
+    await prisma.organizer.upsert({ where: { login }, update: { isSuper: true }, create: { login, isSuper: true } });
+  }
+  if (!(await prisma.organizer.count({ where: { isSuper: true } }))) {
+    const first = await prisma.organizer.findFirst({ orderBy: { createdAt: "asc" } });
+    if (first) await prisma.organizer.update({ where: { id: first.id }, data: { isSuper: true } });
+  }
+}
