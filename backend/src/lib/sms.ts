@@ -33,16 +33,28 @@ export async function sendSmsCode(phone: string, code: string, churchName?: stri
       }),
       signal: AbortSignal.timeout(15_000),
     });
-    const data = (await res.json().catch(() => null)) as { status?: string; code?: string; message?: string } | null;
+    const raw = await res.text();
+    let data: { status?: string; code?: string; message?: string } | null = null;
+    try { data = JSON.parse(raw); } catch {}
     if (!res.ok || data?.status !== "success") {
-      throw new Error(`mNotify answered ${res.status}: ${data?.message ?? "no message"} (code ${data?.code ?? "?"})`);
+      // Keep mNotify's own words in the log (never the key, which is only in the URL).
+      throw new SmsError(res.status, `mNotify answered ${res.status}: ${data?.message ?? (raw.slice(0, 300) || "empty reply")}`);
     }
   } catch (err) {
     if (!isProduction) {
       console.warn(`[dev] SMS to ${phone} failed (${(err as Error).message}). Login code: ${code}`);
       return;
     }
-    console.error("Sending login code by SMS failed:", err);
-    throw new HttpError(502, "We couldn't send the code by SMS. Please try again later.");
+    console.error("Sending login code by SMS failed:", (err as Error).message);
+    // 402: mNotify wants payment. OTP messages are paid from the account's main wallet.
+    if (err instanceof SmsError && err.status === 402) {
+      throw new HttpError(503, "Sign-in by SMS is paused: the SMS account is out of credit. Use your email address, or tell the organizers.");
+    }
+    // Not 502/504: Cloudflare may replace those with its own page, which the browser reports as "can't reach the server".
+    throw new HttpError(503, "We couldn't send the code by SMS. Please try again later, or use your email address.");
   }
+}
+
+class SmsError extends Error {
+  constructor(public status: number, message: string) { super(message); }
 }

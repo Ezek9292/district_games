@@ -41,6 +41,7 @@ export async function sendLoginCode(to: string, code: string, churchName?: strin
       return;
     }
     console.error("Sending login code failed:", err);
-    throw new HttpError(502, "We couldn't send the code email. Please try again later.");
+    // Not 502/504: Cloudflare may replace those with its own page ("can't reach the server" in the browser).
+    throw new HttpError(503, "We couldn't send the code email. Please try again later.");
   }
 }
